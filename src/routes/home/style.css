@@ -3,3 +3,7 @@
 	min-height: 100%;
 	width: 100%;
 }
+
+canvas {
+	border: 1px dashed black;
+}

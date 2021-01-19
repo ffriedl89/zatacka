@@ -37,12 +37,8 @@ function clearCanvas(
   ctx.clearRect(0, 0, width, height);
 }
 
-function initGame(
-  canvas: HTMLCanvasElement,
-  ctx: CanvasRenderingContext2D,
-  isRunningRef: Ref<boolean>
-): void {
-  let gameState: GameState = {
+function resetGameState(): GameState {
+  return {
     timeDelta: 0,
     player: {
       speed: PLAYER_SPEED,
@@ -58,6 +54,16 @@ function initGame(
       ArrowRight: false
     }
   };
+}
+
+function initGame(
+  ctxPlayers: CanvasRenderingContext2D,
+  ctxPaths: CanvasRenderingContext2D,
+  isRunningRef: Ref<boolean>,
+  width: number,
+  height: number
+): void {
+  let gameState = resetGameState();
 
   function setupEventListeners(): void {
     window.addEventListener('keydown', (e: KeyboardEvent) => {
@@ -119,32 +125,43 @@ function initGame(
 
     // circle
     const radius = PLAYER_SIZE / 2;
-    ctx.beginPath();
-    ctx.ellipse(x, y, radius, radius, 0, 0, 2 * Math.PI);
-    ctx.stroke();
+    ctxPlayers.beginPath();
+    ctxPlayers.ellipse(x, y, radius, radius, 0, 0, 2 * Math.PI);
+    ctxPlayers.stroke();
 
-    ctx.beginPath();
+    ctxPlayers.beginPath();
     /* number of vertices for polygon */
     const sides = 3;
     /* angle between vertices of polygon */
     const triangleAngle = (Math.PI * 2) / sides;
-
+    const playerPoints = [];
     for (let i = 0; i < sides; i++) {
-      ctx.lineTo(
-        x + radius * Math.cos(triangleAngle * i + rotation),
-        y + radius * Math.sin(triangleAngle * i + rotation)
-      );
+      const point = {
+        x: x + radius * Math.cos(triangleAngle * i + rotation),
+        y: y + radius * Math.sin(triangleAngle * i + rotation)
+      };
+      playerPoints.push(point);
+      ctxPlayers.lineTo(point.x, point.y);
     }
 
-    ctx.closePath();
-    ctx.stroke();
+    ctxPlayers.closePath();
+    ctxPlayers.stroke();
 
-    ctx.beginPath();
+    ctxPaths.beginPath();
     for (const point of player.path) {
-      ctx.lineTo(point.x, point.y);
+      ctxPaths.lineTo(point.x, point.y);
     }
-    ctx.lineWidth = 2;
-    ctx.stroke();
+    const collisionDetected = playerPoints.some(point =>
+      ctxPaths.isPointInStroke(point.x, point.y)
+    );
+    if (collisionDetected) {
+      console.log('crashed');
+      gameState = resetGameState();
+      clearCanvas(ctxPaths, width, height);
+      return;
+    }
+
+    ctxPaths.stroke();
 
     gameState.player.path.push({ x, y });
 
@@ -162,7 +179,7 @@ function initGame(
   }
 
   function draw(): void {
-    clearCanvas(ctx, canvas.width, canvas.height);
+    clearCanvas(ctxPlayers, width, height);
     drawPlayer();
   }
 
@@ -183,17 +200,20 @@ function initGame(
 }
 
 const Home: FunctionalComponent = () => {
-  const canvasRef = useRef<HTMLCanvasElement>();
+  const playerCanvasRef = useRef<HTMLCanvasElement>();
+  const pathCanvasRef = useRef<HTMLCanvasElement>();
   const gameRef = useRef<boolean>(false);
+  const width = 1000;
+  const height = 800;
 
   useEffect(() => {
-    if (canvasRef.current) {
-      const ctx = canvasRef.current.getContext('2d');
-      if (ctx) {
-        initGame(canvasRef.current, ctx, gameRef);
-      }
+    const ctxPlayerCanvas = playerCanvasRef.current?.getContext('2d');
+    const ctxPathCanvas = pathCanvasRef.current?.getContext('2d');
+    if (!ctxPlayerCanvas || !ctxPathCanvas) {
+      return;
     }
-  }, [canvasRef, gameRef]);
+    initGame(ctxPlayerCanvas, ctxPathCanvas, gameRef, width, height);
+  }, [playerCanvasRef, pathCanvasRef, gameRef]);
 
   function startGame(): void {
     gameRef.current = true;
@@ -207,7 +227,20 @@ const Home: FunctionalComponent = () => {
     <div class={style.home}>
       <button onClick={startGame}>Start Game</button>
       <button onClick={pauseGame}>Pause Game</button>
-      <canvas width="1000" height="800" ref={canvasRef} />
+      <div class={style.gameArea}>
+        <canvas
+          class={style.pathCanvas}
+          width={width}
+          height={height}
+          ref={pathCanvasRef}
+        />
+        <canvas
+          class={style.playerCanvas}
+          width={width}
+          height={height}
+          ref={playerCanvasRef}
+        />
+      </div>
     </div>
   );
 };

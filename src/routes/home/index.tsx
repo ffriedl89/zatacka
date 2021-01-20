@@ -1,5 +1,5 @@
 import { FunctionalComponent, h } from 'preact';
-import { Ref, useEffect, useRef, useState } from 'preact/hooks';
+import { Ref, useEffect, useRef } from 'preact/hooks';
 import * as style from './style.css';
 
 interface GameState {
@@ -57,8 +57,7 @@ function resetGameState(): GameState {
 }
 
 function initGame(
-  ctxPlayers: CanvasRenderingContext2D,
-  ctxPaths: CanvasRenderingContext2D,
+  ctx: CanvasRenderingContext2D,
   isRunningRef: Ref<boolean>,
   width: number,
   height: number
@@ -125,11 +124,11 @@ function initGame(
 
     // circle
     const radius = PLAYER_SIZE / 2;
-    ctxPlayers.beginPath();
-    ctxPlayers.ellipse(x, y, radius, radius, 0, 0, 2 * Math.PI);
-    ctxPlayers.stroke();
+    ctx.beginPath();
+    ctx.ellipse(x, y, radius, radius, 0, 0, 2 * Math.PI);
+    ctx.stroke();
 
-    ctxPlayers.beginPath();
+    ctx.beginPath();
     /* number of vertices for polygon */
     const sides = 3;
     /* angle between vertices of polygon */
@@ -141,27 +140,26 @@ function initGame(
         y: y + radius * Math.sin(triangleAngle * i + rotation)
       };
       playerPoints.push(point);
-      ctxPlayers.lineTo(point.x, point.y);
+      ctx.lineTo(point.x, point.y);
     }
 
-    ctxPlayers.closePath();
-    ctxPlayers.stroke();
+    ctx.closePath();
+    ctx.stroke();
 
-    ctxPaths.beginPath();
+    ctx.beginPath();
     for (const point of player.path) {
-      ctxPaths.lineTo(point.x, point.y);
+      ctx.lineTo(point.x, point.y);
     }
     const collisionDetected = playerPoints.some(point =>
-      ctxPaths.isPointInStroke(point.x, point.y)
+      ctx.isPointInStroke(point.x, point.y)
     );
     if (collisionDetected) {
       console.log('crashed');
       gameState = resetGameState();
-      clearCanvas(ctxPaths, width, height);
+      clearCanvas(ctx, width, height);
       return;
     }
-
-    ctxPaths.stroke();
+    ctx.stroke();
 
     gameState.player.path.push({ x, y });
 
@@ -179,7 +177,7 @@ function initGame(
   }
 
   function draw(): void {
-    clearCanvas(ctxPlayers, width, height);
+    clearCanvas(ctx, width, height);
     drawPlayer();
   }
 
@@ -200,20 +198,18 @@ function initGame(
 }
 
 const Home: FunctionalComponent = () => {
-  const playerCanvasRef = useRef<HTMLCanvasElement>();
-  const pathCanvasRef = useRef<HTMLCanvasElement>();
+  const canvasRef = useRef<HTMLCanvasElement>();
   const gameRef = useRef<boolean>(false);
   const width = 1000;
   const height = 800;
 
   useEffect(() => {
-    const ctxPlayerCanvas = playerCanvasRef.current?.getContext('2d');
-    const ctxPathCanvas = pathCanvasRef.current?.getContext('2d');
-    if (!ctxPlayerCanvas || !ctxPathCanvas) {
+    const ctxPlayerCanvas = canvasRef.current?.getContext('2d');
+    if (!ctxPlayerCanvas) {
       return;
     }
-    initGame(ctxPlayerCanvas, ctxPathCanvas, gameRef, width, height);
-  }, [playerCanvasRef, pathCanvasRef, gameRef]);
+    initGame(ctxPlayerCanvas, gameRef, width, height);
+  }, [canvasRef, gameRef]);
 
   function startGame(): void {
     gameRef.current = true;
@@ -227,20 +223,12 @@ const Home: FunctionalComponent = () => {
     <div class={style.home}>
       <button onClick={startGame}>Start Game</button>
       <button onClick={pauseGame}>Pause Game</button>
-      <div class={style.gameArea}>
-        <canvas
-          class={style.pathCanvas}
-          width={width}
-          height={height}
-          ref={pathCanvasRef}
-        />
-        <canvas
-          class={style.playerCanvas}
-          width={width}
-          height={height}
-          ref={playerCanvasRef}
-        />
-      </div>
+      <canvas
+        class={style.canvas}
+        width={width}
+        height={height}
+        ref={canvasRef}
+      />
     </div>
   );
 };

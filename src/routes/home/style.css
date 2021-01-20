@@ -4,18 +4,7 @@
 	width: 100%;
 }
 
-.gameArea {
-	position: relative;
-}
 
-.pathCanvas,.playerCanvas {
-	position: absolute;
-}
-
-.playerCanvas {
+.canvas {
 	border: 1px dashed greenyellow;
-}
-
-.pathCanvas {
-  border: 1px dashed rebeccapurple;
 }

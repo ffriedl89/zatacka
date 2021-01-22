@@ -8,32 +8,58 @@ interface GameState {
   player: Player;
   keysPressed: { ArrowLeft: boolean; ArrowRight: boolean };
 }
-
 interface Player {
+  state: PlayerState;
   speed: number;
   angle: number;
-  position: PlayerPosition;
-  path: PlayerPosition[];
+  position: Point;
+  path: PlayerPathPoint[];
 }
 
-interface PlayerPosition {
+type StateKind = PlayerState['name'];
+
+type BaseState = {
+  name: string;
+};
+
+type AliveState = BaseState & {
+  name: 'ALIVE';
+  groundedUntil: number;
+};
+
+type FlyingState = BaseState & {
+  name: 'FLYING';
+  flyingUntil: number;
+};
+
+type PlayerState = AliveState | FlyingState;
+
+interface Point {
   x: number;
   y: number;
 }
 
+interface PlayerPathPoint extends Point {
+  gap: boolean;
+}
+
 const PLAYER_SPEED = 0.08;
 const ROTATION_SPEED = 0.15;
-const PLAYER_SIZE = 16;
+const PLAYER_SIZE = 12;
+const GAP_TIME_MIN = 6000;
+const GAP_TIME_MAX = 10000;
+/** The time duration used for a gap in ms */
+const GAP_TIME = 250;
 
 function degreeToRad(degree: number): number {
   return (degree * Math.PI) / 180;
 }
 
-function clearCanvas(
-  ctx: CanvasRenderingContext2D,
-  width: number,
-  height: number
-): void {
+function getRandomGapTiming(): number {
+  return Math.random() * (GAP_TIME_MAX - GAP_TIME_MIN) + GAP_TIME_MIN;
+}
+
+function clearCanvas(ctx: CanvasRenderingContext2D, width: number, height: number): void {
   ctx.clearRect(0, 0, width, height);
 }
 
@@ -41,13 +67,14 @@ function resetGameState(): GameState {
   return {
     timeDelta: 0,
     player: {
+      state: { name: 'ALIVE', groundedUntil: new Date().getTime() + getRandomGapTiming() },
       speed: PLAYER_SPEED,
       angle: 0,
       position: {
         x: 200,
         y: 200
       },
-      path: []
+      path: [],
     },
     keysPressed: {
       ArrowLeft: false,
@@ -56,13 +83,9 @@ function resetGameState(): GameState {
   };
 }
 
-function initGame(
-  ctx: CanvasRenderingContext2D,
-  isRunningRef: Ref<boolean>,
-  width: number,
-  height: number
-): void {
+function initGame(ctx: CanvasRenderingContext2D, isRunningRef: Ref<boolean>, width: number, height: number): void {
   let gameState = resetGameState();
+  console.log(gameState);
 
   function setupEventListeners(): void {
     window.addEventListener('keydown', (e: KeyboardEvent) => {
@@ -133,7 +156,7 @@ function initGame(
     const sides = 3;
     /* angle between vertices of polygon */
     const triangleAngle = (Math.PI * 2) / sides;
-    const playerPoints = [];
+    const playerPoints: Point[] = [];
     for (let i = 0; i < sides; i++) {
       const point = {
         x: x + radius * Math.cos(triangleAngle * i + rotation),
@@ -146,27 +169,51 @@ function initGame(
     ctx.closePath();
     ctx.stroke();
 
+    // draw path
     ctx.beginPath();
     for (const point of player.path) {
-      ctx.lineTo(point.x, point.y);
+      point.gap ? ctx.moveTo(point.x, point.y) : ctx.lineTo(point.x, point.y);
     }
-    const collisionDetected = playerPoints.some(point =>
-      ctx.isPointInStroke(point.x, point.y)
-    );
+
+
+    const collisionDetected = player.state.name === 'ALIVE' && playerPoints.some(point => ctx.isPointInStroke(point.x, point.y));
     if (collisionDetected) {
-      console.log('crashed');
       gameState = resetGameState();
       clearCanvas(ctx, width, height);
       return;
     }
     ctx.stroke();
 
-    gameState.player.path.push({ x, y });
+    const currentTime = new Date().getTime();
+    let nextState: PlayerState = player.state;
+    if (player.state.name === 'FLYING') {
+      gameState.player.path.push({
+        x,
+        y,
+        gap: true
+      });
+      const shouldBeGrounded = currentTime > player.state.flyingUntil;
+      if (shouldBeGrounded) {
+        nextState = { name: 'ALIVE', groundedUntil: currentTime + getRandomGapTiming() }
+      }
+    } else if (player.state.name === 'ALIVE') {
+      const shouldCreateGap = currentTime > player.state.groundedUntil;
+      if (shouldCreateGap) {
+        nextState = { name: 'FLYING', flyingUntil: currentTime + GAP_TIME };
+        console.log(nextState);
+      }
+      gameState.player.path.push({
+        x,
+        y,
+        gap: shouldCreateGap
+      });
+    }
 
     gameState = {
       ...gameState,
       player: {
         ...gameState.player,
+        state: nextState,
         angle,
         position: {
           x,
@@ -188,7 +235,6 @@ function initGame(
       draw();
     }
     window.requestAnimationFrame(gameLoop);
-
     gameState.lastTimeStamp = timestamp;
   }
 
@@ -223,12 +269,7 @@ const Home: FunctionalComponent = () => {
     <div class={style.home}>
       <button onClick={startGame}>Start Game</button>
       <button onClick={pauseGame}>Pause Game</button>
-      <canvas
-        class={style.canvas}
-        width={width}
-        height={height}
-        ref={canvasRef}
-      />
+      <canvas class={style.canvas} width={width} height={height} ref={canvasRef} />
     </div>
   );
 };

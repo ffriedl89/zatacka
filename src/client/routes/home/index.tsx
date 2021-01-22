@@ -22,8 +22,8 @@ type BaseState = {
   name: string;
 };
 
-type AliveState = BaseState & {
-  name: 'ALIVE';
+type GroundedState = BaseState & {
+  name: 'GROUNDED';
   groundedUntil: number;
 };
 
@@ -37,7 +37,7 @@ type CrashedState = BaseState & {
   crashedAt: number;
 };
 
-type PlayerState = AliveState | FlyingState | CrashedState;
+type PlayerState = GroundedState | FlyingState | CrashedState;
 
 type Point = {
   x: number;
@@ -48,9 +48,9 @@ type PlayerPathPoint = Point & {
   gap: boolean;
 };
 
-const PLAYER_SPEED = 0.08;
+const PLAYER_SPEED = 0.10;
 const ROTATION_SPEED = 0.15;
-const PLAYER_SIZE = 12;
+const PLAYER_SIZE = 15;
 const GAP_TIME_MIN = 6000;
 const GAP_TIME_MAX = 10000;
 /** The time duration used for a gap in ms */
@@ -77,6 +77,17 @@ function getRandomStartPosition(width: number, height: number): Point {
   };
 }
 
+function generatePlayers(width: number, height: number): Player[] {
+  return ['blue', 'red', 'green', 'rebeccapurple', 'orange', 'hotpink', 'black', 'gray'].map((color) => ({
+    state: { name: 'GROUNDED', groundedUntil: new Date().getTime() + getRandomGapTiming() },
+    speed: PLAYER_SPEED,
+    angle: getRandomNumberBetween(0, 359),
+    position: getRandomStartPosition(width, height),
+    path: [],
+    color,
+  }));
+}
+
 function isPointInTriangle(point: Point, triangle: [Point, Point, Point]): boolean {
   const [p1, p2, p3] = triangle;
 
@@ -99,24 +110,7 @@ function isPointOutsideOfPlayingField(point: Point, width: number, height: numbe
 function resetGameState(width: number, height: number): GameState {
   return {
     timeDelta: 0,
-    players: [
-      {
-        state: { name: 'ALIVE', groundedUntil: new Date().getTime() + getRandomGapTiming() },
-        speed: PLAYER_SPEED,
-        angle: getRandomNumberBetween(0, 359),
-        position: getRandomStartPosition(width, height),
-        path: [],
-        color: 'red',
-      },
-      {
-        state: { name: 'ALIVE', groundedUntil: new Date().getTime() + getRandomGapTiming() },
-        speed: PLAYER_SPEED,
-        angle: getRandomNumberBetween(0, 359),
-        position: getRandomStartPosition(width, height),
-        path: [],
-        color: 'blue',
-      }
-    ],
+    players: generatePlayers(width, height),
     keysPressed: {
       ArrowLeft: false,
       ArrowRight: false
@@ -240,9 +234,9 @@ function initGame(ctx: CanvasRenderingContext2D, isRunningRef: Ref<boolean>, wid
       });
       const shouldBeGrounded = currentTime > player.state.flyingUntil;
       if (shouldBeGrounded) {
-        nextState = { name: 'ALIVE', groundedUntil: currentTime + getRandomGapTiming() };
+        nextState = { name: 'GROUNDED', groundedUntil: currentTime + getRandomGapTiming() };
       }
-    } else if (player.state.name === 'ALIVE') {
+    } else if (player.state.name === 'GROUNDED') {
       const shouldCreateGap = currentTime > player.state.groundedUntil;
       if (shouldCreateGap) {
         nextState = { name: 'FLYING', flyingUntil: currentTime + GAP_TIME };
@@ -288,7 +282,7 @@ function initGame(ctx: CanvasRenderingContext2D, isRunningRef: Ref<boolean>, wid
         // i crashed either into myself or one of my enemies
         const isCrashed = isOutsidePlayingField || players.some((otherPlayer) => {
           return otherPlayer.path.some((point) => {
-            return isPointInTriangle(point, triangle);
+            return !point.gap && isPointInTriangle(point, triangle);
           });
         });
 

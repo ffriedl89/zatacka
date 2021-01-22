@@ -24,6 +24,7 @@ export default {
         config.resolve.alias["preact-cli-entrypoint"] = resolve(
             process.cwd(),
             "src",
+            "client",
             "index"
         );
     }

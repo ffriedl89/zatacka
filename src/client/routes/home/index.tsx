@@ -9,10 +9,12 @@ interface GameState {
   keysPressed: { ArrowLeft: boolean; ArrowRight: boolean };
 }
 interface Player {
+  color: string;
   state: PlayerState;
   speed: number;
   angle: number;
   position: Point;
+  playerTriangle?: [Point, Point, Point];
   path: PlayerPathPoint[];
 }
 
@@ -48,7 +50,7 @@ type PlayerPathPoint = Point & {
 
 const PLAYER_SPEED = 0.08;
 const ROTATION_SPEED = 0.15;
-const PLAYER_SIZE = 40;
+const PLAYER_SIZE = 12;
 const GAP_TIME_MIN = 6000;
 const GAP_TIME_MAX = 10000;
 /** The time duration used for a gap in ms */
@@ -75,46 +77,22 @@ function getRandomStartPosition(width: number, height: number): Point {
   };
 }
 
-// p0 to p1 define a line segment
-function areLineSegmentAndPlayerColliding(
-  p0: PlayerPathPoint,
-  p1: PlayerPathPoint,
-  playerPosition: Point, 
-): boolean {
-  // calc delta distance: source point to line start
-  const dx = playerPosition.x - p0.x;
-  const dy = playerPosition.y - p0.y;
+function isPointInTriangle(point: Point, triangle: [Point, Point, Point]): boolean {
+  const [p1, p2, p3] = triangle;
 
-  // calc delta distance: line start to end
-  const dxx = p1.x - p0.x;
-  const dyy = p1.y - p0.y;
+  const denominator = (p2.y - p3.y) * (p1.x - p3.x) + (p3.x - p2.x) * (p1.y - p3.y);
+  const a = ((p2.y - p3.y) * (point.x - p3.x) + (p3.x - p2.x) * (point.y - p3.y)) / denominator;
+  const b = ((p3.y - p1.y) * (point.x - p3.x) + (p1.x - p3.x) * (point.y - p3.y)) / denominator;
+  const c = 1 - a - b;
 
-  // Calc position on line normalized between 0.00 & 1.00
-  // == dot product divided by delta line distances squared
-  const t = (dx * dxx + dy * dyy) / (dxx * dxx + dyy * dyy);
-
-  // calc nearest pt on line
-  let x = p0.x + dxx * t;
-  let y = p0.y + dyy * t;
-
-  // clamp results to being on the segment
-  if (t < 0) {
-    x = p0.x;
-    y = p0.y;
-  }
-  if (t > 1) {
-    x = p1.x;
-    y = p1.y;
-  }
-
-  return (playerPosition.x - x) * (playerPosition.x - x) + (playerPosition.y - y) * (playerPosition.y - y) < PLAYER_SIZE * PLAYER_SIZE;
+  return 0 <= a && a <= 1 && 0 <= b && b <= 1 && 0 <= c && c <= 1;
 }
 
 function clearCanvas(ctx: CanvasRenderingContext2D, width: number, height: number): void {
   ctx.clearRect(0, 0, width, height);
 }
 
-function isOutsideOfPlayingField(point: Point, width: number, height: number): boolean {
+function isPointOutsideOfPlayingField(point: Point, width: number, height: number): boolean {
   return point.x < 0 || point.y < 0 || point.x > width || point.y > height;
 }
 
@@ -127,14 +105,16 @@ function resetGameState(width: number, height: number): GameState {
         speed: PLAYER_SPEED,
         angle: getRandomNumberBetween(0, 359),
         position: getRandomStartPosition(width, height),
-        path: []
+        path: [],
+        color: 'red',
       },
       {
         state: { name: 'ALIVE', groundedUntil: new Date().getTime() + getRandomGapTiming() },
         speed: PLAYER_SPEED,
         angle: getRandomNumberBetween(0, 359),
         position: getRandomStartPosition(width, height),
-        path: []
+        path: [],
+        color: 'blue',
       }
     ],
     keysPressed: {
@@ -198,6 +178,7 @@ function initGame(ctx: CanvasRenderingContext2D, isRunningRef: Ref<boolean>, wid
     let { x, y } = player.position;
     let { angle } = player;
     const playerPoints: Point[] = [];
+    ctx.strokeStyle = player.color;
 
     if (player.state.name !== 'CRASHED') {
       const rotationDelta = gameState.timeDelta * ROTATION_SPEED;
@@ -218,8 +199,8 @@ function initGame(ctx: CanvasRenderingContext2D, isRunningRef: Ref<boolean>, wid
       // Shift the centroid of the triangle with the current rotation
       // so that the player position is at the edge of the triangle
       const shiftedPoint = {
-        x: x + Math.cos(rotation) * radius / 2,
-        y: y + Math.sin(rotation) * radius / 2,
+        x: x + (Math.cos(rotation) * (radius + 0.1)) / 2,
+        y: y + (Math.sin(rotation) * (radius + 0.1)) / 2
       };
 
       ctx.beginPath();
@@ -227,7 +208,7 @@ function initGame(ctx: CanvasRenderingContext2D, isRunningRef: Ref<boolean>, wid
       const sides = 3;
       /* angle between vertices of polygon */
       const triangleAngle = (Math.PI * 2) / sides;
-  
+
       for (let i = 0; i < sides; i++) {
         const point = {
           x: shiftedPoint.x + radius * Math.cos(triangleAngle * i + rotation),
@@ -272,7 +253,6 @@ function initGame(ctx: CanvasRenderingContext2D, isRunningRef: Ref<boolean>, wid
         gap: shouldCreateGap
       });
     }
-
     return {
       ...player,
       state: nextState,
@@ -280,32 +260,40 @@ function initGame(ctx: CanvasRenderingContext2D, isRunningRef: Ref<boolean>, wid
       position: {
         x,
         y
-      }
+      },
+      playerTriangle: playerPoints as [Point, Point, Point],
     };
   }
 
   function draw(): void {
     clearCanvas(ctx, width, height);
-    const players: Player[] = gameState.players.map(player => drawPlayer(player)).map((player) => {
-      let lastPoint: PlayerPathPoint | null = null;
-      const isCrashed = false;
-      // const isCrashed = player.path.some((point) => {
-      //   let crashed = false;
-      //   if (lastPoint) {
-      //     // we have a segment to check against all other players
-      //     crashed = gameState.players.some((playerToCheckAgainst) => {
-      //       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      //       return areLineSegmentAndPlayerColliding(lastPoint!, point, playerToCheckAgainst.position);
-      //     });
-      //   }
+    let players: Player[] = gameState.players
+      .map(player => drawPlayer(player));
 
-      //   // if the current point is a gap - reset lastPoint to skip the next segment
-      //   lastPoint = point.gap ? null : point;
-      //   return crashed;
-      // });
+    players = players
+      .map((me) => {
 
-      return isCrashed ? { ...player, state: { name: 'CRASHED', crashedAt: new Date().getTime() }} : player;
-    });
+        // early exit if i am already crashed
+        if (me.state.name == 'CRASHED') {
+          return me;
+        }
+        // If the player is not crashed - we know that there is a playerTriangle defined.
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        const triangle = me.playerTriangle!;
+
+        const isOutsidePlayingField = triangle.some((point) => isPointOutsideOfPlayingField(point, width, height));
+
+        // loop over all players and there path points and check whether
+        // any of their points is inside my players triangle if so 
+        // i crashed either into myself or one of my enemies
+        const isCrashed = isOutsidePlayingField || players.some((otherPlayer) => {
+          return otherPlayer.path.some((point) => {
+            return isPointInTriangle(point, triangle);
+          });
+        });
+
+        return isCrashed ? { ...me, state: { name: 'CRASHED', crashedAt: new Date().getTime() } } : me;
+      });
 
     if (players.every(player => player.state.name === 'CRASHED')) {
       resetGame();

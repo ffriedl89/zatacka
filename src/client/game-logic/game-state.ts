@@ -18,12 +18,13 @@ export interface GameState {
 function generatePlayers(width: number, height: number, ctx: CanvasRenderingContext2D): Record<string, Player> {
   return ['blue', 'red', 'green', 'rebeccapurple', 'orange', 'hotpink', 'black', 'gray'].reduce<Record<string, Player>>(
     (players, color) => {
-      const id = uuid();
-      players[id] = new Player({
+      const player = new Player({
         startPosition: getRandomStartPosition(width, height),
         color,
         ctx,
-      })
+      });
+
+      players[player.id] = player;
       return players;
     },
     {}

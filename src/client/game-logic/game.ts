@@ -1,6 +1,9 @@
 import { clearCanvas } from './helpers/canvas';
 import { resetGameState } from './game-state';
-import { detectPlayersCrashing } from './collision';
+import { detectPlayersCrashing, detectPowerUpPickup } from './collision';
+import { PowerUp, PowerUpKind } from './powerups';
+import { getRandomNumberBetween, getRandomPowerUpPosition } from './helpers/randomize';
+import { POWERUP_TIME_MAX, POWERUP_TIME_MIN } from './game-settings';
 
 const HOSTING = true;
 
@@ -68,37 +71,29 @@ export function initGame(ctx: CanvasRenderingContext2D, width: number, height: n
     });
   }
 
-  // function drawPowerups({ powerUpState }: GameState, ctx: CanvasRenderingContext2D): void {
-  //   const powerUpsToDraw = [...powerUpState.powerUps];
-
-  //   // check wheter to draw a new powerup
-  //   const currentTime = new Date().getTime();
-  //   if (currentTime > powerUpState.nextPowerUpTimestamp) {
-  //     powerUpsToDraw.push({ type: 'SPEED', duration: 1500, boundingBox: { ...getRandomPowerUpPosition(width, height), radius: POWERUP_RADIUS }});
-  //     powerUpState.nextPowerUpTimestamp = getRandomNumberBetween(POWERUP_TIME_MIN, POWERUP_TIME_MAX) + currentTime;
-  //   }
-
-  //   for (const powerUp of powerUpsToDraw) {
-  //     ctx.beginPath();
-  //     ctx.arc(powerUp.boundingBox.x, powerUp.boundingBox.y, 15, 0, Math.PI * 2);
-  //     ctx.fillStyle = 'orange';
-  //     ctx.fill();
-  //     ctx.closePath();
-  //   }
-
-  //   powerUpState.powerUps = powerUpsToDraw;
-  // }
-
-
 
   function update(timestamp: number, timeDelta: number): void {
     for (const player of Object.values(gameState.players)) {
       player.update(timeDelta, timestamp, gameState);
     }
+
+    const { powerUpState } = gameState;
+    // PowerUps
+    // check wheter to draw a new powerup
+    if (timestamp > powerUpState.nextPowerUpTimestamp) {
+      // TODO fix powerup typing here
+      const allKinds: PowerUpKind[] = ['SPEED', 'SLOW', 'GROW', 'SHRINK'];
+      const powerUpKind: PowerUpKind = allKinds[Math.floor(getRandomNumberBetween(0, allKinds.length))];
+
+      const powerUp = new PowerUp(ctx, powerUpKind, { ...getRandomPowerUpPosition(width, height)});
+      powerUpState.nextPowerUpTimestamp = getRandomNumberBetween(POWERUP_TIME_MIN, POWERUP_TIME_MAX) + timestamp;
+      powerUpState.powerUps.push(powerUp);
+    }
   }
 
   function detectCollisions(timestamp: number): void {
     detectPlayersCrashing(Object.values(gameState.players), width, height, timestamp);
+    detectPowerUpPickup(Object.values(gameState.players), gameState.powerUpState);
   }
 
   function draw(): void {
@@ -107,13 +102,16 @@ export function initGame(ctx: CanvasRenderingContext2D, width: number, height: n
     for (const player of Object.values(gameState.players)) {
       player.draw();
     }
+
+    for(const powerUp of gameState.powerUpState.powerUps) {
+      powerUp.draw();
+    }
   }
 
   function gameLoop(): void {
     const loopTimestamp = new Date().getTime();
     if (gameState.running) {
       const secondsPassed = (loopTimestamp - (gameState.lastTimeStamp ?? 0)) / 1000;
-      console.log('TimeDelta', secondsPassed)
       // Update game objects in the loop
       update(loopTimestamp, secondsPassed);
 

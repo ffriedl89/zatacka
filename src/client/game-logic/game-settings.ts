@@ -25,6 +25,9 @@ export const POWERUP_TIME_MIN = 2000;
 /** Maximum time between spawning powerups */
 export const POWERUP_TIME_MAX = 4000;
 
+export const POWERUP_DURATION = 3000;
+
 export const POWERUP_RADIUS = 15;
-export const POWERUP_SPEED_BOOST = 0.05;
+export const POWERUP_SPEED_BOOST = 100;
+export const POWERUP_SLOW_PENALTY_FACTOR = .5;
 

@@ -4,6 +4,7 @@ import { degreeToRad } from './helpers/trigonometry';
 import { GameState } from './game-state';
 import { getRandomAngle, getRandomGapTiming } from './helpers/randomize';
 import { v4 as uuid } from '@lukeed/uuid';
+import { PowerUpEffect } from './powerups';
 
 type BaseState = {
   type: string;
@@ -47,6 +48,8 @@ export class Player {
   ctx: CanvasRenderingContext2D;
 
   hitBoxCircleRadius: number = PLAYER_SIZE / 2;
+
+  effects: PowerUpEffect[] = [];
 
   private get _rotationInRad(): number {
     return degreeToRad(this.angle);
@@ -131,6 +134,15 @@ export class Player {
         gap: shouldCreateGap
       });
     }
+    const indicesToRemove: number[] = [];
+    this.effects.forEach((effect, index) => {
+      if (effect.effectUntil < loopTimestamp) {
+        effect.removeEffect(this);
+        console.log(`%cPlayer ${this.color}'s powerup ${effect.kind} ended.`, `color: ${this.color};`)
+        indicesToRemove.push(index);
+      } 
+    });
+    indicesToRemove.reverse().forEach((index) => this.effects.splice(index, 1));
   }
 
   handleCrash(loopTimestamp: number): void {

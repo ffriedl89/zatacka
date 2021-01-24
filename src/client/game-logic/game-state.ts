@@ -4,38 +4,36 @@ import { Player } from './player';
 import { v4 as uuid } from '@lukeed/uuid';
 import { PowerUpState } from './powerups';
 
+
+export type KeysPressedState = { ArrowLeft: boolean; ArrowRight: boolean };
 export interface GameState {
   lastTimeStamp?: number;
   timeDelta: number;
   players: Record<string, Player>;
   powerUpState: PowerUpState;
-  keysPressed: { ArrowLeft: boolean; ArrowRight: boolean };
+  keysPressed: KeysPressedState;
 }
 
 /** Temporary generation function */
-function generatePlayers(width: number, height: number): Record<string, Player> {
+function generatePlayers(width: number, height: number, ctx: CanvasRenderingContext2D): Record<string, Player> {
   return ['blue', 'red', 'green', 'rebeccapurple', 'orange', 'hotpink', 'black', 'gray'].reduce<Record<string, Player>>(
     (players, color) => {
       const id = uuid();
-      players[id] = {
-        id,
-        state: { type: 'GROUNDED', groundedUntil: new Date().getTime() + getRandomGapTiming() },
-        speed: PLAYER_SPEED,
-        angle: getRandomAngle(),
-        position: getRandomStartPosition(width, height),
-        path: [],
-        color
-      };
+      players[id] = new Player({
+        startPosition: getRandomStartPosition(width, height),
+        color,
+        ctx,
+      })
       return players;
     },
     {}
   );
 }
 
-export function resetGameState(width: number, height: number): GameState {
+export function resetGameState(width: number, height: number, ctx: CanvasRenderingContext2D): GameState {
   return {
     timeDelta: 0,
-    players: generatePlayers(width, height),
+    players: generatePlayers(width, height, ctx),
     powerUpState: {
       nextPowerUpTimestamp: getRandomNumberBetween(POWERUP_TIME_MIN, POWERUP_TIME_MAX) + new Date().getTime(),
       powerUps: []

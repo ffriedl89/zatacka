@@ -1,5 +1,4 @@
-import { Point } from "../points";
-import { Circle } from "./trigonometry";
+import { Point, Circle } from "../types";
 
 export function isPointInTriangle(point: Point, triangle: [Point, Point, Point]): boolean {
   const [p1, p2, p3] = triangle;

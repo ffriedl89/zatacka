@@ -1,5 +1,5 @@
 import { GAP_TIME_MAX, GAP_TIME_MIN, START_POSITION_MIN_EDGE_DISTANCE } from "../game-settings";
-import { Point } from "../points";
+import { Point } from "../types";
 
 export function getRandomNumberBetween(min: number, max: number): number {
   return Math.random() * (max - min) + min;

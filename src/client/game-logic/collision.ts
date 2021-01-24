@@ -1,35 +1,30 @@
-import { POWERUP_SPEED_BOOST } from "./game-settings";
-import { GameState } from "./game-state";
-import { isPointInCircle, isPointInTriangle, isPointOutsideOfPlayingField } from "./helpers/collision";
+import { isPointInTriangle, isPointOutsideOfPlayingField } from "./helpers/collision";
 import { Player } from "./player";
-import { PowerUp } from "./powerups";
 
-// export function detectPlayersCrashing(players: Player[], width: number, height: number): Player[] {
-//   return players.map(player => {
-//     // early exit if i am already crashed
-//     if (player.state.type === 'CRASHED') {
-//       return player;
-//     }
-//     // If the player is not crashed - we know that there is a playerTriangle defined.
-//     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-//     const triangle = player.playerTriangle!;
+export function detectPlayersCrashing(players: Player[], width: number, height: number, loopTimestamp: number): void {
+  for (const player of players) {
+    // early exit if i am already crashed
+    if (player.state.type === 'CRASHED') {
+      continue;
+    }
 
-//     const isOutsidePlayingField = triangle.some(point => isPointOutsideOfPlayingField(point, width, height));
+    const isOutsidePlayingField = player.hitBox.some(point => isPointOutsideOfPlayingField(point, width, height));
 
-//     // loop over all players and there path points and check whether
-//     // any of their points is inside my players triangle if so
-//     // i crashed either into myself or one of my enemies
-//     const isCrashed =
-//       isOutsidePlayingField ||
-//       players.some(otherPlayer => {
-//         return otherPlayer.path.some(point => {
-//           return !point.gap && isPointInTriangle(point, triangle);
-//         });
-//       });
-
-//     return isCrashed ? { ...player, state: { type: 'CRASHED', crashedAt: new Date().getTime() } } : player;
-//   });
-// }
+    // loop over all players and there path points and check whether
+    // any of their points is inside my players triangle if so
+    // i crashed either into myself or one of my enemies
+    const isCrashed =
+      isOutsidePlayingField ||
+      players.some(otherPlayer => {
+        return otherPlayer.path.some(point => {
+          return !point.gap && isPointInTriangle(point, player.hitBox);
+        });
+      });
+    if (isCrashed) {
+      player.handleCrash(loopTimestamp);
+    }
+  }
+}
 
 // export function detectPowerUpPickup(players: Player[], gameState: GameState): GameState {
 //   const { powerUpState } = gameState;

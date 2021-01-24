@@ -1,12 +1,14 @@
-import { PLAYER_SPEED, POWERUP_TIME_MAX, POWERUP_TIME_MIN } from './game-settings';
-import { getRandomAngle, getRandomGapTiming, getRandomNumberBetween, getRandomStartPosition } from './helpers/randomize';
+import { POWERUP_TIME_MAX, POWERUP_TIME_MIN } from './game-settings';
+import {
+  getRandomNumberBetween,
+  getRandomStartPosition
+} from './helpers/randomize';
 import { Player } from './player';
-import { v4 as uuid } from '@lukeed/uuid';
 import { PowerUpState } from './powerups';
-
 
 export type KeysPressedState = { ArrowLeft: boolean; ArrowRight: boolean };
 export interface GameState {
+  running: boolean;
   lastTimeStamp?: number;
   timeDelta: number;
   players: Record<string, Player>;
@@ -21,7 +23,7 @@ function generatePlayers(width: number, height: number, ctx: CanvasRenderingCont
       const player = new Player({
         startPosition: getRandomStartPosition(width, height),
         color,
-        ctx,
+        ctx
       });
 
       players[player.id] = player;
@@ -33,6 +35,7 @@ function generatePlayers(width: number, height: number, ctx: CanvasRenderingCont
 
 export function resetGameState(width: number, height: number, ctx: CanvasRenderingContext2D): GameState {
   return {
+    running: false,
     timeDelta: 0,
     players: generatePlayers(width, height, ctx),
     powerUpState: {

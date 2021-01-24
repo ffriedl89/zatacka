@@ -1,12 +1,16 @@
 import { FunctionalComponent, h } from 'preact';
-import { useEffect, useRef } from 'preact/hooks';
-import { initGame } from '../../game-logic/game';
+import { useEffect, useRef, useState } from 'preact/hooks';
+import { GameControls, initGame } from '../../game-logic/game';
 
 import * as style from './style.css';
 
 const Home: FunctionalComponent = () => {
   const canvasRef = useRef<HTMLCanvasElement>();
-  const gameRef = useRef<boolean>(false);
+  const [controls, setControls] = useState<GameControls>({
+    startGame: () => {},
+    pauseGame: () => {},
+    resetGame: () => {}
+  });
   const width = 1000;
   const height = 800;
 
@@ -15,21 +19,14 @@ const Home: FunctionalComponent = () => {
     if (!ctxPlayerCanvas) {
       return;
     }
-    initGame(ctxPlayerCanvas, gameRef, width, height);
-  }, [canvasRef, gameRef]);
-
-  function startGame(): void {
-    gameRef.current = true;
-  }
-
-  function pauseGame(): void {
-    gameRef.current = false;
-  }
+    setControls(initGame(ctxPlayerCanvas, width, height));
+  }, []);
 
   return (
     <div class={style.home}>
-      <button onClick={startGame}>Start Game</button>
-      <button onClick={pauseGame}>Pause Game</button>
+      <button onClick={controls.startGame}>Start Game</button>
+      <button onClick={controls.pauseGame}>Pause Game</button>
+      <button onClick={controls.resetGame}>Reset Game</button>
       <canvas class={style.canvas} width={width} height={height} ref={canvasRef} />
     </div>
   );

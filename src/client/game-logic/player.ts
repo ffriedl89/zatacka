@@ -1,14 +1,9 @@
-import { PlayerPathPoint, Point } from './points';
+import { PlayerPathPoint, Point } from './types';
 import { GAP_TIME, PLAYER_SIZE, PLAYER_SPEED, ROTATION_SPEED } from './game-settings';
 import { degreeToRad } from './helpers/trigonometry';
 import { GameState } from './game-state';
 import { getRandomAngle, getRandomGapTiming } from './helpers/randomize';
 import { v4 as uuid } from '@lukeed/uuid';
-
-export interface Player {
-  id: string;
-  
-}
 
 type BaseState = {
   type: string;
@@ -33,7 +28,6 @@ type PlayerState = GroundedState | FlyingState | CrashedState;
 
 type Triangle = [Point, Point, Point];
 export class Player {
-
   id = uuid();
 
   color: string;
@@ -58,7 +52,7 @@ export class Player {
     return degreeToRad(this.angle);
   }
 
-  constructor({ color, startPosition, ctx}: {color: string, startPosition: Point, ctx: CanvasRenderingContext2D}) {
+  constructor({ color, startPosition, ctx }: { color: string; startPosition: Point; ctx: CanvasRenderingContext2D }) {
     this.color = color;
     this.position = startPosition;
     this.angle = getRandomAngle();
@@ -93,11 +87,15 @@ export class Player {
   }
 
   draw(): void {
-    this._drawHead();
+    this.state.type !== 'CRASHED' && this._drawHead();
     this._drawPath();
   }
 
-  update(loopTimestamp: number, timeDelta: number, { keysPressed }: GameState): void {
+  update(timeDelta: number, loopTimestamp: number, { keysPressed }: GameState): void {
+    if (this.state.type === 'CRASHED') {
+      return;
+    }
+
     const rotationDelta = timeDelta * ROTATION_SPEED;
     if (keysPressed.ArrowLeft) {
       this.angle -= rotationDelta;
@@ -108,8 +106,8 @@ export class Player {
     // calculate next position
     this.position = {
       x: this.position.x + Math.cos(rotation) * (timeDelta * this.speed),
-      y: this.position.y + Math.sin(rotation) * (timeDelta * this.speed),
-    }
+      y: this.position.y + Math.sin(rotation) * (timeDelta * this.speed)
+    };
 
     this.hitBox = this._calculateHitbox();
 
@@ -124,6 +122,7 @@ export class Player {
       }
     } else if (this.state.type === 'GROUNDED') {
       const shouldCreateGap = loopTimestamp > this.state.groundedUntil;
+
       if (shouldCreateGap) {
         this.state = { type: 'FLYING', flyingUntil: loopTimestamp + GAP_TIME };
       }
@@ -134,13 +133,18 @@ export class Player {
     }
   }
 
+  handleCrash(loopTimestamp: number): void {
+    this.state = { type: 'CRASHED', crashedAt: loopTimestamp };
+    console.log(this.color, 'crashed');
+  }
+
   private _drawHead(): void {
-    this.ctx.strokeStyle = this.color;
     this.ctx.beginPath();
     for (const corner of this.hitBox) {
       this.ctx.lineTo(corner.x, corner.y);
     }
     this.ctx.closePath();
+    this.ctx.strokeStyle = this.color;
     this.ctx.stroke();
   }
 
@@ -149,6 +153,7 @@ export class Player {
     for (const point of this.path) {
       point.gap ? this.ctx.moveTo(point.x, point.y) : this.ctx.lineTo(point.x, point.y);
     }
+    this.ctx.strokeStyle = this.color;
     this.ctx.stroke();
   }
 }

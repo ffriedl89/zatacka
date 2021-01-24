@@ -1,13 +1,29 @@
 import { clearCanvas } from './helpers/canvas';
 import { resetGameState } from './game-state';
-import { Ref } from 'preact/hooks';
+import { detectPlayersCrashing } from './collision';
 
-export function initGame(ctx: CanvasRenderingContext2D, isRunningRef: Ref<boolean>, width: number, height: number): void {
+const HOSTING = true;
+
+export type GameControls = {
+  startGame: () => void;
+  pauseGame: () => void;
+  resetGame: () => void;
+};
+
+export function initGame(ctx: CanvasRenderingContext2D, width: number, height: number): GameControls {
   let gameState = resetGameState(width, height, ctx);
 
   function resetGame(): void {
     gameState = resetGameState(width, height, ctx);
     clearCanvas(ctx, width, height);
+  }
+
+  function startGame(): void {
+    gameState.running = true;
+  }
+
+  function pauseGame(): void {
+    gameState.running = false;
   }
 
   function setupEventListeners(): void {
@@ -50,12 +66,6 @@ export function initGame(ctx: CanvasRenderingContext2D, isRunningRef: Ref<boolea
         };
       }
     });
-
-    // window.addEventListener('powerup-speed-pickedup', (player) => {
-    //   gameState = {
-    //     ...gameState
-    //   };
-    // });
   }
 
   // function drawPowerups({ powerUpState }: GameState, ctx: CanvasRenderingContext2D): void {
@@ -79,56 +89,49 @@ export function initGame(ctx: CanvasRenderingContext2D, isRunningRef: Ref<boolea
   //   powerUpState.powerUps = powerUpsToDraw;
   // }
 
+
+
+  function update(timestamp: number, timeDelta: number): void {
+    for (const player of Object.values(gameState.players)) {
+      player.update(timeDelta, timestamp, gameState);
+    }
+  }
+
+  function detectCollisions(timestamp: number): void {
+    detectPlayersCrashing(Object.values(gameState.players), width, height, timestamp);
+  }
+
   function draw(): void {
     clearCanvas(ctx, width, height);
     // draw all players
     for (const player of Object.values(gameState.players)) {
-      player.draw()
-    }
-
-    //gameState = detectPowerUpPickup(playersArr, gameState);
-
-    // // check for collisions
-    // detectPlayersCrashing(playersArr, width, height);
-
-    // // reset game when all players are crashed
-    // if (playersArr.every(player => player.state.type === 'CRASHED')) {
-    //   resetGame();
-    //   return;
-    // }
-
-    // update game state
-    // gameState = {
-    //   ...gameState,
-    //   players: playersArr.reduce<Record<string, Player>>((players, player) => {
-    //     players[player.id] = player;
-    //     return players;
-    //   }, {})
-    // };
-  }
-
-  function update(timestamp: number, timeDelta: number): void {
-    for (const player of Object.values(gameState.players)) {
-      player.update(timestamp, timeDelta, gameState);
+      player.draw();
     }
   }
 
-  function gameLoop(timestamp: number): void {
-    if (isRunningRef.current) {
-      const timeDelta = timestamp - (gameState.lastTimeStamp ?? 0);
-      gameState.timeDelta = timeDelta;
+  function gameLoop(): void {
+    const loopTimestamp = new Date().getTime();
+    if (gameState.running) {
+      const secondsPassed = (loopTimestamp - (gameState.lastTimeStamp ?? 0)) / 1000;
+      console.log('TimeDelta', secondsPassed)
       // Update game objects in the loop
-      update(timestamp, timeDelta);
+      update(loopTimestamp, secondsPassed);
 
       // sendMyPlayerToHost();
+
+      if (HOSTING) {
+        detectCollisions(loopTimestamp);
+      }
 
       draw();
     }
     window.requestAnimationFrame(gameLoop);
-    gameState.lastTimeStamp = timestamp;
+    gameState.lastTimeStamp = loopTimestamp;
   }
 
   // Start loop
   window.requestAnimationFrame(gameLoop);
   setupEventListeners();
+
+  return { startGame, pauseGame, resetGame };
 }

@@ -2,9 +2,9 @@
 /** -------------- PLAYER -------------- */
 
 /** Default player speed */
-export const PLAYER_SPEED = 0.1;
+export const PLAYER_SPEED = 100;
 /** Normal rotation speed for players */
-export const ROTATION_SPEED = 0.15;
+export const ROTATION_SPEED = 150;
 /** Size for players triangle */
 export const PLAYER_SIZE = 15;
 /** Minimum distance between a players start position and the edge of the playing field */
@@ -12,9 +12,9 @@ export const START_POSITION_MIN_EDGE_DISTANCE = 150;
 
 /** -------------- GAPS -------------- */
 /** Minimum time between gaps */
-export const GAP_TIME_MIN = 6000;
+export const GAP_TIME_MIN = 4000;
 /** Maximum time between gaps */
-export const GAP_TIME_MAX = 10000;
+export const GAP_TIME_MAX = 6000;
 /** The time duration used for a gap in ms */
 export const GAP_TIME = 250;
 

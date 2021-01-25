@@ -27,7 +27,7 @@ export const POWERUP_TIME_MAX = 4000;
 
 export const POWERUP_DURATION = 3000;
 
-export const POWERUP_RADIUS = 15;
+export const POWERUP_RADIUS = 24;
 export const POWERUP_SPEED_BOOST = 100;
 export const POWERUP_SLOW_PENALTY_FACTOR = .5;
 

@@ -30,7 +30,7 @@ type PlayerState = GroundedState | FlyingState | CrashedState;
 type Triangle = [Point, Point, Point];
 
 const rocket = new Image();
-rocket.src = '/assets/Rocket.png';
+rocket.src = '/assets/Rocket_white.png';
 export class Player {
   static rocket = rocket;
 

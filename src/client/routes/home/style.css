@@ -6,5 +6,5 @@
 
 
 .canvas {
-	border: 1px dashed greenyellow;
+	background-color: var(--canvas-background-color);
 }

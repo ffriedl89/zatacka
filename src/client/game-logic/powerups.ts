@@ -44,13 +44,7 @@ export type PowerUpEffect = {
   removeEffect: (player: Player) => void;
 };
 
-// TODO create map
-const powerUpColorMap = {
-  SLOW: 'orange',
-  SPEED: 'red',
-  GROW: 'green',
-  SHRINK: 'blue'
-};
+const image = new Image();
 export class PowerUp implements BasePowerUp {
   kind: PowerUpKind;
   boundingBox: Circle;
@@ -67,11 +61,29 @@ export class PowerUp implements BasePowerUp {
   }
 
   draw(): void {
-    this.ctx.beginPath();
-    this.ctx.arc(this.boundingBox.x, this.boundingBox.y, POWERUP_RADIUS, 0, Math.PI * 2);
-    this.ctx.fillStyle = powerUpColorMap[this.kind];
-    this.ctx.fill();
-    this.ctx.closePath();
+    this.ctx.translate(this.boundingBox.x, this.boundingBox.y);    
+
+    switch (this.kind) {
+      case 'SPEED':
+        image.src = 'assets/powerups/speed.png';
+        break;
+      case 'SLOW':
+        image.src = 'assets/powerups/slow.png';
+        break;
+      case 'GROW':
+        image.src = 'assets/powerups/grow.png';
+        break;
+      case 'SHRINK':
+        image.src = 'assets/powerups/shrink.png';
+        break;
+    }
+    this._drawPowerUpImage(image);
+
+    this.ctx.translate(-this.boundingBox.x, -this.boundingBox.y);
+  }
+
+  private _drawPowerUpImage(image: HTMLImageElement): void {
+    this.ctx.drawImage(image, -POWERUP_RADIUS, -POWERUP_RADIUS, POWERUP_RADIUS * 2, POWERUP_RADIUS * 2);
   }
 
   handleCollision(player: Player, powerUpState: PowerUpState): void {

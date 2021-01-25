@@ -6,7 +6,7 @@ export const PLAYER_SPEED = 100;
 /** Normal rotation speed for players */
 export const ROTATION_SPEED = 150;
 /** Size for players triangle */
-export const PLAYER_SIZE = 15;
+export const PLAYER_SIZE = 20;
 /** Minimum distance between a players start position and the edge of the playing field */
 export const START_POSITION_MIN_EDGE_DISTANCE = 150;
 

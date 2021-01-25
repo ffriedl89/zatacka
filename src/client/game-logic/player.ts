@@ -28,7 +28,12 @@ type CrashedState = BaseState & {
 type PlayerState = GroundedState | FlyingState | CrashedState;
 
 type Triangle = [Point, Point, Point];
+
+const rocket = new Image();
+rocket.src = '/assets/Rocket.png';
 export class Player {
+  static rocket = rocket;
+
   id = uuid();
 
   color: string;
@@ -45,11 +50,13 @@ export class Player {
 
   hitBox: Triangle;
 
-  ctx: CanvasRenderingContext2D;
+  hitBoxCenteroid: Point | null = null;
 
   hitBoxCircleRadius: number = PLAYER_SIZE / 2;
-
+  
   effects: PowerUpEffect[] = [];
+  
+  ctx: CanvasRenderingContext2D;
 
   private get _rotationInRad(): number {
     return degreeToRad(this.angle);
@@ -70,7 +77,7 @@ export class Player {
 
     // The centroid for the triangle is shifted from the current position to
     // adjust have the path and triangle not collide for the same player
-    const triangleCentroid = {
+    this.hitBoxCenteroid = {
       x: this.position.x + (Math.cos(rotationInRad) * (this.hitBoxCircleRadius + 0.1)) / 2,
       y: this.position.y + (Math.sin(rotationInRad) * (this.hitBoxCircleRadius + 0.1)) / 2
     };
@@ -81,11 +88,12 @@ export class Player {
 
     for (let i = 0; i < 3; i++) {
       const point = {
-        x: triangleCentroid.x + this.hitBoxCircleRadius * Math.cos(triangleAngle * i + rotationInRad),
-        y: triangleCentroid.y + this.hitBoxCircleRadius * Math.sin(triangleAngle * i + rotationInRad)
+        x: this.hitBoxCenteroid.x + this.hitBoxCircleRadius * Math.cos(triangleAngle * i + rotationInRad),
+        y: this.hitBoxCenteroid.y + this.hitBoxCircleRadius * Math.sin(triangleAngle * i + rotationInRad)
       };
       hitBox.push(point);
     }
+
     return hitBox as Triangle;
   }
 
@@ -151,13 +159,22 @@ export class Player {
   }
 
   private _drawHead(): void {
-    this.ctx.beginPath();
-    for (const corner of this.hitBox) {
-      this.ctx.lineTo(corner.x, corner.y);
-    }
-    this.ctx.closePath();
-    this.ctx.strokeStyle = this.color;
-    this.ctx.stroke();
+    // this.ctx.beginPath();
+    // for (const corner of this.hitBox) {
+    //   this.ctx.lineTo(corner.x, corner.y);
+    // }
+    // this.ctx.closePath();
+    // this.ctx.strokeStyle = this.color;
+    // this.ctx.stroke();
+
+    const rotation = degreeToRad(this.angle);
+    const size = this.hitBoxCircleRadius * 2;
+
+    this.ctx.translate(this.hitBoxCenteroid!.x, this.hitBoxCenteroid!.y);
+    this.ctx.rotate(rotation);
+    this.ctx.drawImage(Player.rocket, -size / 2, -size / 2, size, size);
+    this.ctx.rotate(-rotation);
+    this.ctx.translate(-this.hitBoxCenteroid!.x, -this.hitBoxCenteroid!.y);
   }
 
   private _drawPath(): void {
@@ -166,6 +183,7 @@ export class Player {
       point.gap ? this.ctx.moveTo(point.x, point.y) : this.ctx.lineTo(point.x, point.y);
     }
     this.ctx.strokeStyle = this.color;
+    this.ctx.lineWidth = 2;
     this.ctx.stroke();
   }
 }

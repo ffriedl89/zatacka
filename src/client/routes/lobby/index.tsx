@@ -1,34 +1,37 @@
 import { FunctionalComponent, h } from 'preact';
-import { useContext, useMemo, useRef, useState } from 'preact/hooks';
-// import { Client, Host } from '../../comms';
-import { CommunicationContext } from '../../comms/communication-provider';
+import { useRef, useState } from 'preact/hooks';
+import { Client, Host } from '../../comms';
+import { Communication } from '../../comms/communication';
 import * as style from './style.css';
 
-
 const Lobby: FunctionalComponent = () => {
-    const context = useContext(CommunicationContext);
-    console.log('Context', context);
     const [lobbyId, setLobbyId] = useState('');
     const [userName, setUserName] = useState('');
+    const [isHost, setIsHost] = useState(false);
 
-    // const host = useRef<Host>();
-    // const client = useRef<Client>();
+    const communication = useRef<Communication>();
 
-    // const userDependency = host?.current?.users ?? [];
-    // const lobbyUsers = useMemo<Array<string>>(() => {
-    //     console.log('memo hook called');
-    //     return host?.current?.users ?? []
-    // }, [userDependency]);
-
+    const [lobbyUsers, setLobbyUsers] = useState<Array<{ username: string; host: boolean }>>([]);
 
     function createLobby(): void {
-        // host.current = new Host(() => {
-        //     setLobbyId(host.current.lobbyId);
-        // });
+        setIsHost(true);
+        const comms = new Communication(true);
+        comms.setLobbyId = setLobbyId;
+        comms.setUserName = setUserName;
+        comms.setLobbyUsers = setLobbyUsers;
+        comms.openLobby();
+        // We will probably need to persist this into the window
+        // to share this commication instance over to the game afterwards.
+        communication.current = comms;
     }
 
     function joinLobby(): void {
-        // client.current = new Client(lobbyId);
+        setIsHost(false);
+        const comms = new Communication(false);
+        comms.setUserName = setUserName;
+        comms.setLobbyUsers = setLobbyUsers;
+        comms.joinLobby(lobbyId);
+        communication.current = comms;
     }
 
     return (<div class={style.lobby}>
@@ -36,9 +39,9 @@ const Lobby: FunctionalComponent = () => {
         <input type="text" value={lobbyId} onChange={(e: any) => setLobbyId(e.target.value)} />
         <button onClick={joinLobby}>Join lobby</button>
 
-        <input type="text" value={userName} onChange={(e: any) => setUserName(e.target.value)} />
+        <input type="text" value={userName} onKeyUp={(e: any) => communication.current.changeUserName(e.target.value)} />
 
-        {/* {lobbyUsers.map(user => <li key={user}>{user}</li>)} */}
+        {lobbyUsers.map(user => <li key={user.username}>{user.username}{user.host && ' (H)'}</li>)}
     </div>)
 }
 

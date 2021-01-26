@@ -6,7 +6,6 @@ import Profile from "../routes/profile";
 import NotFoundPage from "../routes/notfound";
 import Lobby from '../routes/lobby';
 import Header from "./header";
-import { CommunicationProvider } from "../comms/";
 
 const App: FunctionalComponent = () => {
     let currentUrl: string;
@@ -17,15 +16,13 @@ const App: FunctionalComponent = () => {
     return (
         <div id="app">
             <Header />
-            <CommunicationProvider>
-                <Router onChange={handleRoute}>
-                    <Route path="/" component={Home} />
-                    <Route path="/lobby" component={Lobby} />
-                    <Route path="/profile/" component={Profile} user="me" />
-                    <Route path="/profile/:user" component={Profile} />
-                    <NotFoundPage default />
-                </Router>
-            </CommunicationProvider>
+            <Router onChange={handleRoute}>
+                <Route path="/" component={Home} />
+                <Route path="/lobby" component={Lobby} />
+                <Route path="/profile/" component={Profile} user="me" />
+                <Route path="/profile/:user" component={Profile} />
+                <NotFoundPage default />
+            </Router>
         </div>
     );
 };

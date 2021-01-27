@@ -3,7 +3,7 @@ import { resetGameState } from './game-state';
 import { detectPlayersCrashing, detectPowerUpPickup } from './collision';
 import { PowerUp, PowerUpKind } from './powerups';
 import { getRandomNumberBetween, getRandomPowerUpPosition } from './helpers/randomize';
-import { POWERUP_TIME_MAX, POWERUP_TIME_MIN } from './game-settings';
+import { DRAW_DEBUG_INFO, POWERUP_TIME_MAX, POWERUP_TIME_MIN } from './game-settings';
 
 const HOSTING = true;
 
@@ -122,6 +122,14 @@ export function initGame(ctx: CanvasRenderingContext2D, width: number, height: n
       }
 
       draw();
+      // Calculate fps
+      const fps = Math.round(1 / secondsPassed);
+
+      if (DRAW_DEBUG_INFO) {
+        ctx.font = '12px Arial';
+        ctx.fillStyle = 'white';
+        ctx.fillText("FPS: " + fps, 10, 30);
+      }
     }
     window.requestAnimationFrame(gameLoop);
     gameState.lastTimeStamp = loopTimestamp;

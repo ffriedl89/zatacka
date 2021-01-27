@@ -1,5 +1,12 @@
 import { PlayerPathPoint, Point } from './types';
-import { GAP_TIME, PLAYER_SIZE, PLAYER_SPEED, ROTATION_SPEED } from './game-settings';
+import {
+  DRAW_DEBUG_INFO,
+  GAP_TIME,
+  PLAYER_DEFAULT_LINE_SIZE,
+  PLAYER_SIZE,
+  PLAYER_SPEED,
+  ROTATION_SPEED
+} from './game-settings';
 import { degreeToRad } from './helpers/trigonometry';
 import { GameState } from './game-state';
 import { getRandomAngle, getRandomGapTiming } from './helpers/randomize';
@@ -52,11 +59,15 @@ export class Player {
 
   hitBoxCenteroid: Point | null = null;
 
-  hitBoxCircleRadius: number = PLAYER_SIZE / 2;
-  
+  scaleFactor = 1;
+
   effects: PowerUpEffect[] = [];
-  
+
   ctx: CanvasRenderingContext2D;
+
+  get hitBoxCircleRadius(): number {
+    return (PLAYER_SIZE / 2) * this.scaleFactor;
+  }
 
   private get _rotationInRad(): number {
     return degreeToRad(this.angle);
@@ -125,7 +136,8 @@ export class Player {
     if (this.state.type === 'FLYING') {
       this.path.push({
         ...this.position,
-        gap: true
+        gap: true,
+        size: PLAYER_DEFAULT_LINE_SIZE * this.scaleFactor
       });
       const shouldBeGrounded = loopTimestamp > this.state.flyingUntil;
       if (shouldBeGrounded) {
@@ -139,33 +151,38 @@ export class Player {
       }
       this.path.push({
         ...this.position,
-        gap: shouldCreateGap
+        gap: shouldCreateGap,
+        size: PLAYER_DEFAULT_LINE_SIZE * this.scaleFactor
       });
     }
     const indicesToRemove: number[] = [];
     this.effects.forEach((effect, index) => {
       if (effect.effectUntil < loopTimestamp) {
         effect.removeEffect(this);
-        console.log(`%cPlayer ${this.color}'s powerup ${effect.kind} ended.`, `color: ${this.color};`)
+        console.log(`%cPlayer ${this.color}'s powerup ${effect.kind} ended.`, `color: ${this.color};`);
         indicesToRemove.push(index);
-      } 
+      }
     });
-    indicesToRemove.reverse().forEach((index) => this.effects.splice(index, 1));
+    indicesToRemove.reverse().forEach(index => this.effects.splice(index, 1));
   }
 
   handleCrash(loopTimestamp: number): void {
     this.state = { type: 'CRASHED', crashedAt: loopTimestamp };
+    console.log(this.path);
     console.log(this.color, 'crashed');
   }
 
   private _drawHead(): void {
-    // this.ctx.beginPath();
-    // for (const corner of this.hitBox) {
-    //   this.ctx.lineTo(corner.x, corner.y);
-    // }
-    // this.ctx.closePath();
-    // this.ctx.strokeStyle = this.color;
-    // this.ctx.stroke();
+    if (DRAW_DEBUG_INFO) {
+      this.ctx.beginPath();
+      this.ctx.lineWidth = 1;
+      for (const corner of this.hitBox) {
+        this.ctx.lineTo(corner.x, corner.y);
+      }
+      this.ctx.closePath();
+      this.ctx.strokeStyle = this.color;
+      this.ctx.stroke();
+    }
 
     const rotation = degreeToRad(this.angle);
     const size = this.hitBoxCircleRadius * 2;
@@ -178,12 +195,18 @@ export class Player {
   }
 
   private _drawPath(): void {
+    let currentLineWidth = PLAYER_DEFAULT_LINE_SIZE;
     this.ctx.beginPath();
     for (const point of this.path) {
+      this.ctx.strokeStyle = this.color;
+      this.ctx.lineWidth = currentLineWidth;
       point.gap ? this.ctx.moveTo(point.x, point.y) : this.ctx.lineTo(point.x, point.y);
+      if (currentLineWidth !== point.size) {
+        this.ctx.stroke();
+        this.ctx.beginPath();
+      }
+      currentLineWidth = point.size;
     }
-    this.ctx.strokeStyle = this.color;
-    this.ctx.lineWidth = 2;
     this.ctx.stroke();
   }
 }

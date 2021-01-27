@@ -5,6 +5,7 @@ export type Point = {
 
 export type PlayerPathPoint = Point & {
   gap: boolean;
+  size: number;
 };
 
 export interface Circle extends Point {

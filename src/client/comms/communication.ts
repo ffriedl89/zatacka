@@ -1,6 +1,6 @@
 import Peer from 'peerjs';
 import { StateUpdater } from 'preact/hooks';
-import { SET_USER_LIST, SET_USER_NAME } from './comm-signs';
+import { CLIENT_GAME_STAGED, SET_USER_LIST, SET_USER_NAME, GO_TO_GAMESCREEN, START_GAME } from './comm-signs';
 
 export class Communication {
   /** Global peer connection */
@@ -19,7 +19,7 @@ export class Communication {
       this.setUserName(username);
     }
     // If we are on a client, send the update to the host
-    if (!this._host) {
+    if (!this.host) {
       this.connections[0].send({ type: SET_USER_NAME, data: username });
     } else {
       this.userName = username;
@@ -29,15 +29,31 @@ export class Communication {
 
   setLobbyUsers?: StateUpdater<Array<{ username: string; host: boolean }>>;
 
+  // Setters and connection for starting a game
+  goToGameScreen?: () => void;
+  triggerGoToGameScreen() {
+    if (this.host && this.goToGameScreen) {
+      this._sendEventToClients(GO_TO_GAMESCREEN, true);
+      this.goToGameScreen();
+    }
+  }
+
+  startGame?: () => void;
+  syncStart(): void {
+    if (!this.host) {
+      this.connections[0].send({ type: CLIENT_GAME_STAGED });
+    }
+  }
+
   private connections: Peer.DataConnection[] = [];
 
   /**
    * Metadata map connecting a DataConnection to a user
    * Primarily used by the host.
    * */
-  private _metaMap = new Map<string, { username?: string }>();
+  private _metaMap = new Map<string, { username?: string; staged?: boolean }>();
 
-  constructor(private _host: boolean) {
+  constructor(public host: boolean) {
     this._peer = new Peer(undefined, { debug: 2 });
   }
 
@@ -61,6 +77,10 @@ export class Communication {
     });
   }
 
+  onEverybodyStaged(fn: () => void): void {
+    fn();
+  }
+
   private _hostReady(): void {
     this._peer.on('connection', dataConnection => {
       dataConnection.on('data', evtData => {
@@ -70,8 +90,16 @@ export class Communication {
           if (meta) {
             meta.username = evtData.data;
             this._metaMap.set(dataConnection.peer, meta);
-            console.log(this._metaMap);
             this._updateMembersList();
+          }
+          return;
+        }
+        if (evtData.type === CLIENT_GAME_STAGED) {
+          const meta = this._metaMap.get(dataConnection.peer);
+          if (meta) {
+            meta.staged = true;
+            this._metaMap.set(dataConnection.peer, meta);
+            this._checkForGameStart();
           }
           return;
         }
@@ -89,9 +117,17 @@ export class Communication {
         this.setLobbyUsers(evtData.data);
         return;
       }
+      if (evtData.type === GO_TO_GAMESCREEN && this.goToGameScreen) {
+        this.goToGameScreen();
+        return;
+      }
+      if (evtData.type === START_GAME && this.startGame) {
+        this.startGame();
+      }
     });
   }
 
+  // Update the members list
   private _updateMembersList(): void {
     const users = [{ username: this.userName, host: true }];
     for (const user of this._metaMap.values()) {
@@ -103,6 +139,20 @@ export class Communication {
     }
     // send the update to the client
     this._sendEventToClients(SET_USER_LIST, users);
+  }
+
+  // Check if the game can start
+  private _checkForGameStart(): void {
+    const allUsersStagedStates: boolean[] = [];
+    for (const user of this._metaMap.values()) {
+      allUsersStagedStates.push(user.staged);
+    }
+    if (allUsersStagedStates.every(e => true)) {
+      this._sendEventToClients(START_GAME, true);
+      if (this.startGame) {
+        this.startGame();
+      }
+    }
   }
 
   private _sendEventToClients(event: string, eventData: unknown): void {

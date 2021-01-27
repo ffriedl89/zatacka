@@ -4,6 +4,7 @@ import { detectPlayersCrashing, detectPowerUpPickup } from './collision';
 import { PowerUp, PowerUpKind } from './powerups';
 import { getRandomNumberBetween, getRandomPowerUpPosition } from './helpers/randomize';
 import { DRAW_DEBUG_INFO, POWERUP_TIME_MAX, POWERUP_TIME_MIN } from './game-settings';
+import { Communication } from '../comms/communication';
 
 const HOSTING = true;
 
@@ -27,6 +28,12 @@ export function initGame(ctx: CanvasRenderingContext2D, width: number, height: n
 
   function pauseGame(): void {
     gameState.running = false;
+  }
+
+  const communication: Communication = (window as any).gameConnection;
+  if (communication) {
+    communication.startGame = startGame;
+    communication.syncStart();
   }
 
   function setupEventListeners(): void {
@@ -71,7 +78,6 @@ export function initGame(ctx: CanvasRenderingContext2D, width: number, height: n
     });
   }
 
-
   function update(timestamp: number, timeDelta: number): void {
     for (const player of Object.values(gameState.players)) {
       player.update(timeDelta, timestamp, gameState);
@@ -85,7 +91,7 @@ export function initGame(ctx: CanvasRenderingContext2D, width: number, height: n
       const allKinds: PowerUpKind[] = ['SPEED', 'SLOW', 'GROW', 'SHRINK'];
       const powerUpKind: PowerUpKind = allKinds[Math.floor(getRandomNumberBetween(0, allKinds.length))];
 
-      const powerUp = new PowerUp(ctx, powerUpKind, { ...getRandomPowerUpPosition(width, height)});
+      const powerUp = new PowerUp(ctx, powerUpKind, { ...getRandomPowerUpPosition(width, height) });
       powerUpState.nextPowerUpTimestamp = getRandomNumberBetween(POWERUP_TIME_MIN, POWERUP_TIME_MAX) + timestamp;
       powerUpState.powerUps.push(powerUp);
     }
@@ -103,7 +109,7 @@ export function initGame(ctx: CanvasRenderingContext2D, width: number, height: n
       player.draw();
     }
 
-    for(const powerUp of gameState.powerUpState.powerUps) {
+    for (const powerUp of gameState.powerUpState.powerUps) {
       powerUp.draw();
     }
   }
@@ -128,7 +134,7 @@ export function initGame(ctx: CanvasRenderingContext2D, width: number, height: n
       if (DRAW_DEBUG_INFO) {
         ctx.font = '12px Arial';
         ctx.fillStyle = 'white';
-        ctx.fillText("FPS: " + fps, 10, 30);
+        ctx.fillText('FPS: ' + fps, 10, 30);
       }
     }
     window.requestAnimationFrame(gameLoop);

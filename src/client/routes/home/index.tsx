@@ -7,9 +7,9 @@ import * as style from './style.css';
 const Home: FunctionalComponent = () => {
   const canvasRef = useRef<HTMLCanvasElement>();
   const [controls, setControls] = useState<GameControls>({
-    startGame: () => {},
-    pauseGame: () => {},
-    resetGame: () => {}
+    startGame: () => { },
+    pauseGame: () => { },
+    resetGame: () => { }
   });
   const width = 1000;
   const height = 800;

@@ -161,11 +161,11 @@ export function initGame(ctx: CanvasRenderingContext2D, width: number, height: n
 
         detectCollisions(loopTimestamp);
         const deltaToLastSync = loopTimestamp - (gameState.lastSyncStamp ?? 0);
-        if (deltaToLastSync > 100) {
-          communication.syncGameState(gameState);
-          console.log('SYNC');
-          gameState.lastSyncStamp = loopTimestamp;
-        }
+        // if (deltaToLastSync > 20) {
+        communication.syncGameState(gameState);
+        // console.log('SYNC');
+        // gameState.lastSyncStamp = loopTimestamp;
+        // }
       }
 
       draw();

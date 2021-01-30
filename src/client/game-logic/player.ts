@@ -36,8 +36,19 @@ type PlayerState = GroundedState | FlyingState | CrashedState;
 
 type Triangle = [Point, Point, Point];
 
+export interface PlayerTransferData {
+  state: PlayerState;
+  position: Point;
+  angle: number;
+  scaleFactor: number;
+  hitBoxCenteroid: Point | null;
+  path: PlayerPathPoint[];
+  color: string;
+}
+
 const rocket = new Image();
 rocket.src = '/assets/Rocket_white.png';
+
 export class Player {
   static rocket = rocket;
 
@@ -71,6 +82,27 @@ export class Player {
 
   private get _rotationInRad(): number {
     return degreeToRad(this.angle);
+  }
+
+  get transferData(): PlayerTransferData {
+    return {
+      state: this.state,
+      position: this.position,
+      angle: this.angle,
+      scaleFactor: this.scaleFactor,
+      hitBoxCenteroid: this.hitBoxCenteroid,
+      path: this.path,
+      color: this.color
+    };
+  }
+  set transferData(value: PlayerTransferData) {
+    this.state = value.state;
+    this.position = value.position;
+    this.angle = value.angle;
+    this.scaleFactor = value.scaleFactor;
+    this.hitBoxCenteroid = value.hitBoxCenteroid;
+    this.path = value.path;
+    this.color = value.color;
   }
 
   constructor({ color, startPosition, ctx }: { color: string; startPosition: Point; ctx: CanvasRenderingContext2D }) {

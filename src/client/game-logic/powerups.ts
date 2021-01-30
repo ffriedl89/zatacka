@@ -1,9 +1,4 @@
-import {
-  POWERUP_DURATION,
-  POWERUP_RADIUS,
-  POWERUP_SLOW_PENALTY,
-  POWERUP_SPEED_BOOST
-} from './game-settings';
+import { POWERUP_DURATION, POWERUP_RADIUS, POWERUP_SLOW_PENALTY, POWERUP_SPEED_BOOST } from './game-settings';
 import { Player } from './player';
 import { Circle, Point } from './types';
 
@@ -44,6 +39,11 @@ export type PowerUpEffect = {
   removeEffect: (player: Player) => void;
 };
 
+export interface PowerUpTransferData {
+  boundingBox: Circle;
+  effectDuration: number;
+  kind: PowerUpKind;
+}
 export class PowerUp implements BasePowerUp {
   kind: PowerUpKind;
   boundingBox: Circle;
@@ -61,8 +61,21 @@ export class PowerUp implements BasePowerUp {
     this._setImageSrc();
   }
 
+  get transferData(): PowerUpTransferData {
+    return {
+      boundingBox: this.boundingBox,
+      effectDuration: this.effectDuration,
+      kind: this.kind
+    };
+  }
+  set transferData(value: PowerUpTransferData) {
+    this.boundingBox = value.boundingBox;
+    this.effectDuration = value.effectDuration;
+    this.kind = value.kind;
+  }
+
   draw(): void {
-    this.ctx.translate(this.boundingBox.x, this.boundingBox.y);    
+    this.ctx.translate(this.boundingBox.x, this.boundingBox.y);
 
     this._drawPowerUpImage(this._image);
 
@@ -77,9 +90,9 @@ export class PowerUp implements BasePowerUp {
           effectUntil: new Date().getTime() + POWERUP_DURATION,
           kind: this.kind,
           removeEffect: player => {
-            console.log('player speed before', player.speed)
+            console.log('player speed before', player.speed);
             player.speed /= POWERUP_SPEED_BOOST;
-            console.log('player speed after', player.speed)
+            console.log('player speed after', player.speed);
           }
         });
         break;
@@ -141,5 +154,4 @@ export class PowerUp implements BasePowerUp {
         break;
     }
   }
-
 }

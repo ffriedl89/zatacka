@@ -1,6 +1,24 @@
 import Peer from 'peerjs';
 import { StateUpdater } from 'preact/hooks';
-import { CLIENT_GAME_STAGED, SET_USER_LIST, SET_USER_NAME, GO_TO_GAMESCREEN, START_GAME } from './comm-signs';
+import { GameState } from '../game-logic/game-state';
+import { PlayerTransferData } from '../game-logic/player';
+import { PowerUpTransferData } from '../game-logic/powerups';
+import {
+  CLIENT_GAME_STAGED,
+  SET_USER_LIST,
+  SET_USER_NAME,
+  GO_TO_GAMESCREEN,
+  START_GAME,
+  SHARE_GAME_STATE
+} from './comm-signs';
+
+export interface TransferGameState {
+  powerUpState: {
+    powerUps: PowerUpTransferData[];
+    nextPowerUpTimestamp: number;
+  };
+  players: PlayerTransferData[];
+}
 
 export class Communication {
   /** Global peer connection */
@@ -70,15 +88,33 @@ export class Communication {
   joinLobby(lobbyId: string): void {
     this.lobbyId = lobbyId;
     this._peer.on('open', id => {
-      this.connections = [this._peer.connect(this.lobbyId, { reliable: true })];
+      this.connections = [this._peer.connect(this.lobbyId, { reliable: false })];
       this.connections[0].on('open', () => {
         this._clientReady();
+      });
+      this.connections[0].on('error', err => {
+        console.log('Client error', err);
       });
     });
   }
 
   onEverybodyStaged(fn: () => void): void {
     fn();
+  }
+
+  // Function set by a client to get updates from the game
+  // state
+  clientGameStateUpdate?: (gameState: TransferGameState) => void;
+
+  syncGameState(gameState: GameState): void {
+    const transferrableGameState: TransferGameState = {
+      powerUpState: {
+        powerUps: gameState.powerUpState.powerUps.map(powerUp => powerUp.transferData),
+        nextPowerUpTimestamp: gameState.powerUpState.nextPowerUpTimestamp
+      },
+      players: Object.values(gameState.players).map(player => player.transferData)
+    };
+    this._sendEventToClients(SHARE_GAME_STATE, transferrableGameState);
   }
 
   private _hostReady(): void {
@@ -112,7 +148,6 @@ export class Communication {
   private _clientReady(): void {
     const connection = this.connections[0];
     connection.on('data', evtData => {
-      console.log('Recieved data from host', evtData);
       if (evtData.type === SET_USER_LIST && this.setLobbyUsers) {
         this.setLobbyUsers(evtData.data);
         return;
@@ -123,6 +158,12 @@ export class Communication {
       }
       if (evtData.type === START_GAME && this.startGame) {
         this.startGame();
+        return;
+      }
+      if (evtData.type === SHARE_GAME_STATE && this.clientGameStateUpdate) {
+        console.log('share game state message');
+        this.clientGameStateUpdate(evtData.data);
+        return;
       }
     });
   }
@@ -145,7 +186,7 @@ export class Communication {
   private _checkForGameStart(): void {
     const allUsersStagedStates: boolean[] = [];
     for (const user of this._metaMap.values()) {
-      allUsersStagedStates.push(user.staged);
+      allUsersStagedStates.push(user.staged!);
     }
     if (allUsersStagedStates.every(e => true)) {
       this._sendEventToClients(START_GAME, true);

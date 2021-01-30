@@ -1,12 +1,11 @@
 import { clearCanvas } from './helpers/canvas';
-import { resetGameState } from './game-state';
+import { GameState, resetGameState } from './game-state';
 import { detectPlayersCrashing, detectPowerUpPickup } from './collision';
 import { PowerUp, PowerUpKind } from './powerups';
 import { getRandomNumberBetween, getRandomPowerUpPosition } from './helpers/randomize';
 import { DRAW_DEBUG_INFO, POWERUP_TIME_MAX, POWERUP_TIME_MIN } from './game-settings';
-import { Communication } from '../comms/communication';
-
-const HOSTING = true;
+import { Communication, TransferGameState } from '../comms/communication';
+import { Player } from './player';
 
 export type GameControls = {
   startGame: () => void;
@@ -33,47 +32,82 @@ export function initGame(ctx: CanvasRenderingContext2D, width: number, height: n
   const communication: Communication = (window as any).gameConnection;
   if (communication) {
     communication.startGame = startGame;
+    gameState.running = false;
     communication.syncStart();
+
+    if (!communication.host) {
+      communication.clientGameStateUpdate = (transferGameState: TransferGameState): void => {
+        console.log('update');
+        const powerUps = transferGameState.powerUpState.powerUps.map((powerUp, index) => {
+          const p =
+            gameState.powerUpState.powerUps[index] ||
+            new PowerUp(ctx, powerUp.kind, { x: powerUp.boundingBox.x, y: powerUp.boundingBox.y });
+          p.transferData = powerUp;
+          return p;
+        });
+        const players = transferGameState.players.reduce<Record<string, Player>>((allPlayers, player) => {
+          const p =
+            gameState.players[player.color] || new Player({ color: player.color, startPosition: player.position, ctx });
+          p.transferData = player;
+          allPlayers[player.color] = p;
+          return allPlayers;
+        }, {});
+        gameState = {
+          ...gameState,
+          ...{
+            powerUpState: {
+              powerUps,
+              nextPowerUpTimestamp: transferGameState.powerUpState.nextPowerUpTimestamp
+            },
+            players
+          }
+        };
+      };
+    }
   }
 
   function setupEventListeners(): void {
     window.addEventListener('keydown', (e: KeyboardEvent) => {
-      if (e.key === 'ArrowRight') {
-        gameState = {
-          ...gameState,
-          keysPressed: {
-            ...gameState.keysPressed,
-            ArrowRight: true
-          }
-        };
-      } else if (e.key === 'ArrowLeft') {
-        gameState = {
-          ...gameState,
-          keysPressed: {
-            ...gameState.keysPressed,
-            ArrowLeft: true
-          }
-        };
+      if (communication && communication.host) {
+        if (e.key === 'ArrowRight') {
+          gameState = {
+            ...gameState,
+            keysPressed: {
+              ...gameState.keysPressed,
+              ArrowRight: true
+            }
+          };
+        } else if (e.key === 'ArrowLeft') {
+          gameState = {
+            ...gameState,
+            keysPressed: {
+              ...gameState.keysPressed,
+              ArrowLeft: true
+            }
+          };
+        }
       }
     });
 
     window.addEventListener('keyup', (e: KeyboardEvent) => {
-      if (e.key === 'ArrowRight') {
-        gameState = {
-          ...gameState,
-          keysPressed: {
-            ...gameState.keysPressed,
-            ArrowRight: false
-          }
-        };
-      } else if (e.key === 'ArrowLeft') {
-        gameState = {
-          ...gameState,
-          keysPressed: {
-            ...gameState.keysPressed,
-            ArrowLeft: false
-          }
-        };
+      if (communication && communication.host) {
+        if (e.key === 'ArrowRight') {
+          gameState = {
+            ...gameState,
+            keysPressed: {
+              ...gameState.keysPressed,
+              ArrowRight: false
+            }
+          };
+        } else if (e.key === 'ArrowLeft') {
+          gameState = {
+            ...gameState,
+            keysPressed: {
+              ...gameState.keysPressed,
+              ArrowLeft: false
+            }
+          };
+        }
       }
     });
   }
@@ -82,8 +116,8 @@ export function initGame(ctx: CanvasRenderingContext2D, width: number, height: n
     for (const player of Object.values(gameState.players)) {
       player.update(timeDelta, timestamp, gameState);
     }
-
     const { powerUpState } = gameState;
+
     // PowerUps
     // check wheter to draw a new powerup
     if (timestamp > powerUpState.nextPowerUpTimestamp) {
@@ -118,13 +152,20 @@ export function initGame(ctx: CanvasRenderingContext2D, width: number, height: n
     const loopTimestamp = new Date().getTime();
     if (gameState.running) {
       const secondsPassed = (loopTimestamp - (gameState.lastTimeStamp ?? 0)) / 1000;
-      // Update game objects in the loop
-      update(loopTimestamp, secondsPassed);
 
       // sendMyPlayerToHost();
 
-      if (HOSTING) {
+      if (communication.host) {
+        // Update game objects in the loop
+        update(loopTimestamp, secondsPassed);
+
         detectCollisions(loopTimestamp);
+        const deltaToLastSync = loopTimestamp - (gameState.lastSyncStamp ?? 0);
+        if (deltaToLastSync > 100) {
+          communication.syncGameState(gameState);
+          console.log('SYNC');
+          gameState.lastSyncStamp = loopTimestamp;
+        }
       }
 
       draw();

@@ -18,7 +18,7 @@ export interface GameState {
 
 /** Temporary generation function */
 function generatePlayers(width: number, height: number, ctx: CanvasRenderingContext2D): Record<string, Player> {
-  return ['blue', 'red'].reduce<Record<string, Player>>(
+  return ['blue', 'red', 'green', 'orange', 'purple', 'hotpink', 'lime'].reduce<Record<string, Player>>(
     (players, color) => {
       const player = new Player({
         startPosition: getRandomStartPosition(width, height),

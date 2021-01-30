@@ -1,4 +1,4 @@
-import { Point, Circle } from "../types";
+import { Point, Circle } from "../types/points";
 
 export function isPointInTriangle(point: Point, triangle: [Point, Point, Point]): boolean {
   const [p1, p2, p3] = triangle;

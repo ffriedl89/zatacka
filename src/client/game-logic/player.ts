@@ -1,4 +1,4 @@
-import { PlayerPathPoint, Point } from './types';
+import { PlayerPathPoint, Point } from './types/points';
 import {
   DRAW_DEBUG_INFO,
   GAP_TIME,
@@ -64,6 +64,8 @@ export class Player {
   effects: PowerUpEffect[] = [];
 
   ctx: CanvasRenderingContext2D;
+
+  score = 0;
 
   get hitBoxCircleRadius(): number {
     return (PLAYER_SIZE / 2) * this.scaleFactor;

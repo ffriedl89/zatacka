@@ -5,7 +5,7 @@ import {
   POWERUP_SPEED_BOOST
 } from './game-settings';
 import { Player } from './player';
-import { Circle, Point } from './types';
+import { Circle, Point } from './types/points';
 
 export interface PowerUpState {
   powerUps: PowerUp[];

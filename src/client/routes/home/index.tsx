@@ -1,11 +1,14 @@
 import { FunctionalComponent, h } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { GameControls, initGame } from '../../game-logic/game';
+import { Player } from '../../game-logic/player';
 
 import * as style from './style.css';
 
 const Home: FunctionalComponent = () => {
   const canvasRef = useRef<HTMLCanvasElement>();
+  const [players, setPlayers] = useState<Record<string, Player>>({});
+
   const [controls, setControls] = useState<GameControls>({
     startGame: () => {},
     pauseGame: () => {},
@@ -15,11 +18,16 @@ const Home: FunctionalComponent = () => {
   const height = 800;
 
   useEffect(() => {
-    const ctxPlayerCanvas = canvasRef.current?.getContext('2d');
-    if (!ctxPlayerCanvas) {
-      return;
+    const playerCanvas = canvasRef.current;
+    setControls(initGame(playerCanvas, width, height));
+
+    function handleScoreChange(event: CustomEvent<Player>): void {
+      setPlayers({ ...players, [event.detail.id]: event.detail });
     }
-    setControls(initGame(ctxPlayerCanvas, width, height));
+
+    playerCanvas.addEventListener('playerscorechange', handleScoreChange);
+
+    return (): void => playerCanvas.removeEventListener('playerscorechange', handleScoreChange);
   }, []);
 
   return (

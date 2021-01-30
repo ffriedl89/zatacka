@@ -13,7 +13,8 @@ export type GameControls = {
   resetGame: () => void;
 };
 
-export function initGame(ctx: CanvasRenderingContext2D, width: number, height: number): GameControls {
+export function initGame(canvas: HTMLCanvasElement, width: number, height: number): GameControls {
+  const ctx = canvas.getContext('2d')!;
   let gameState = resetGameState(width, height, ctx);
 
   function resetGame(): void {
@@ -92,7 +93,7 @@ export function initGame(ctx: CanvasRenderingContext2D, width: number, height: n
   }
 
   function detectCollisions(timestamp: number): void {
-    detectPlayersCrashing(Object.values(gameState.players), width, height, timestamp);
+    detectPlayersCrashing(Object.values(gameState.players), timestamp, canvas);
     detectPowerUpPickup(Object.values(gameState.players), gameState.powerUpState);
   }
 

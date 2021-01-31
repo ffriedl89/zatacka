@@ -42,7 +42,10 @@ export interface PlayerTransferData {
   angle: number;
   scaleFactor: number;
   hitBoxCenteroid: Point | null;
-  path: PlayerPathPoint[];
+  path: {
+    startIndex: number;
+    path: PlayerPathPoint[];
+  };
   color: string;
 }
 
@@ -85,13 +88,18 @@ export class Player {
   }
 
   get transferData(): PlayerTransferData {
+    const transferPathElements = 40;
     return {
       state: this.state,
       position: this.position,
       angle: this.angle,
       scaleFactor: this.scaleFactor,
       hitBoxCenteroid: this.hitBoxCenteroid,
-      path: this.path,
+      path: {
+        // Slice out only a portion of the path for transfer
+        startIndex: this.path.length - transferPathElements,
+        path: this.path.slice(this.path.length - transferPathElements)
+      },
       color: this.color
     };
   }
@@ -101,7 +109,8 @@ export class Player {
     this.angle = value.angle;
     this.scaleFactor = value.scaleFactor;
     this.hitBoxCenteroid = value.hitBoxCenteroid;
-    this.path = value.path;
+    // Combine the path again
+    this.path = [...this.path.slice(0, value.path.startIndex), ...value.path.path];
     this.color = value.color;
   }
 

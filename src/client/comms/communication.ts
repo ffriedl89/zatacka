@@ -73,6 +73,7 @@ export class Communication {
 
   constructor(public host: boolean) {
     this._peer = new Peer(undefined, { debug: 2 });
+    this._peer.on('error', err => console.log('Root peer err', err));
   }
 
   openLobby(): void {
@@ -109,7 +110,7 @@ export class Communication {
   syncGameState(gameState: GameState): void {
     const transferrableGameState: TransferGameState = {
       powerUpState: {
-        powerUps: gameState.powerUpState.powerUps.map(powerUp => powerUp.transferData),
+        powerUps: [], //gameState.powerUpState.powerUps.map(powerUp => powerUp.transferData),
         nextPowerUpTimestamp: gameState.powerUpState.nextPowerUpTimestamp
       },
       players: Object.values(gameState.players).map(player => player.transferData)
@@ -165,6 +166,9 @@ export class Communication {
         this.clientGameStateUpdate(evtData.data);
         return;
       }
+    });
+    connection.on('error', err => {
+      console.log('connection error', err);
     });
   }
 

@@ -68,7 +68,7 @@ export function initGame(ctx: CanvasRenderingContext2D, width: number, height: n
 
   function setupEventListeners(): void {
     window.addEventListener('keydown', (e: KeyboardEvent) => {
-      if (communication && communication.host) {
+      if (!communication || (communication && communication.host)) {
         if (e.key === 'ArrowRight') {
           gameState = {
             ...gameState,
@@ -90,7 +90,7 @@ export function initGame(ctx: CanvasRenderingContext2D, width: number, height: n
     });
 
     window.addEventListener('keyup', (e: KeyboardEvent) => {
-      if (communication && communication.host) {
+      if (!communication || (communication && communication.host)) {
         if (e.key === 'ArrowRight') {
           gameState = {
             ...gameState,
@@ -154,18 +154,16 @@ export function initGame(ctx: CanvasRenderingContext2D, width: number, height: n
       const secondsPassed = (loopTimestamp - (gameState.lastTimeStamp ?? 0)) / 1000;
 
       // sendMyPlayerToHost();
+      if (!communication) {
+        update(loopTimestamp, secondsPassed);
 
-      if (communication.host) {
+        detectCollisions(loopTimestamp);
+      } else if (communication && communication.host) {
         // Update game objects in the loop
         update(loopTimestamp, secondsPassed);
 
         detectCollisions(loopTimestamp);
-        const deltaToLastSync = loopTimestamp - (gameState.lastSyncStamp ?? 0);
-        // if (deltaToLastSync > 20) {
         communication.syncGameState(gameState);
-        // console.log('SYNC');
-        // gameState.lastSyncStamp = loopTimestamp;
-        // }
       }
 
       draw();

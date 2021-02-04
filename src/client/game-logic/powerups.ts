@@ -1,6 +1,7 @@
 import { POWERUP_DURATION, POWERUP_RADIUS, POWERUP_SLOW_PENALTY, POWERUP_SPEED_BOOST } from './game-settings';
 import { Player } from './player';
 import { Circle, Point } from './types';
+import { v4 as uuid } from '@lukeed/uuid';
 
 export interface PowerUpState {
   powerUps: PowerUp[];
@@ -40,11 +41,14 @@ export type PowerUpEffect = {
 };
 
 export interface PowerUpTransferData {
+  id: string;
   boundingBox: Circle;
   effectDuration: number;
   kind: PowerUpKind;
 }
 export class PowerUp implements BasePowerUp {
+  id = uuid();
+
   kind: PowerUpKind;
   boundingBox: Circle;
   effectDuration = 1500;
@@ -63,12 +67,14 @@ export class PowerUp implements BasePowerUp {
 
   get transferData(): PowerUpTransferData {
     return {
+      id: this.id,
       boundingBox: this.boundingBox,
       effectDuration: this.effectDuration,
       kind: this.kind
     };
   }
   set transferData(value: PowerUpTransferData) {
+    this.id = value.id;
     this.boundingBox = value.boundingBox;
     this.effectDuration = value.effectDuration;
     this.kind = value.kind;
@@ -132,6 +138,11 @@ export class PowerUp implements BasePowerUp {
     }
     const index = powerUpState.powerUps.indexOf(this);
     powerUpState.powerUps.splice(index, 1);
+
+    // Not quite happy to do that here, but idk
+    if ((window as any)?.gameConnection?.host) {
+      (window as any)?.gameConnection.removePowerUp(this.id);
+    }
   }
 
   private _drawPowerUpImage(image: HTMLImageElement): void {

@@ -37,6 +37,7 @@ type PlayerState = GroundedState | FlyingState | CrashedState;
 type Triangle = [Point, Point, Point];
 
 export interface PlayerTransferData {
+  id: string;
   state: PlayerState;
   position: Point;
   angle: number;
@@ -90,6 +91,7 @@ export class Player {
   get transferData(): PlayerTransferData {
     const transferPathElements = 40;
     return {
+      id: this.id,
       state: this.state,
       position: this.position,
       angle: this.angle,
@@ -104,6 +106,7 @@ export class Player {
     };
   }
   set transferData(value: PlayerTransferData) {
+    this.id = value.id;
     this.state = value.state;
     this.position = value.position;
     this.angle = value.angle;

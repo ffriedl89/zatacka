@@ -2,23 +2,17 @@ import Peer from 'peerjs';
 import { StateUpdater } from 'preact/hooks';
 import { GameState } from '../game-logic/game-state';
 import { PlayerTransferData } from '../game-logic/player';
-import { PowerUpTransferData } from '../game-logic/powerups';
+import { PowerUp, PowerUpTransferData } from '../game-logic/powerups';
 import {
   CLIENT_GAME_STAGED,
   SET_USER_LIST,
   SET_USER_NAME,
   GO_TO_GAMESCREEN,
   START_GAME,
-  SHARE_GAME_STATE
+  SHARE_GAME_STATE,
+  POWER_UP_ADDED,
+  POWER_UP_REMOVED
 } from './comm-signs';
-
-export interface TransferGameState {
-  powerUpState: {
-    powerUps: PowerUpTransferData[];
-    nextPowerUpTimestamp: number;
-  };
-  players: PlayerTransferData[];
-}
 
 export class Communication {
   /** Global peer connection */
@@ -105,17 +99,26 @@ export class Communication {
 
   // Function set by a client to get updates from the game
   // state
-  clientGameStateUpdate?: (gameState: TransferGameState) => void;
+  clientPlayersUpdate?: (players: PlayerTransferData[]) => void;
 
   syncGameState(gameState: GameState): void {
-    const transferrableGameState: TransferGameState = {
-      powerUpState: {
-        powerUps: [], //gameState.powerUpState.powerUps.map(powerUp => powerUp.transferData),
-        nextPowerUpTimestamp: gameState.powerUpState.nextPowerUpTimestamp
-      },
-      players: Object.values(gameState.players).map(player => player.transferData)
-    };
-    this._sendEventToClients(SHARE_GAME_STATE, transferrableGameState);
+    const transferablePlayers: PlayerTransferData[] = Object.values(gameState.players).map(
+      player => player.transferData
+    );
+
+    this._sendEventToClients(SHARE_GAME_STATE, transferablePlayers);
+  }
+
+  powerUpAdded?: (powerUp: PowerUpTransferData) => void;
+
+  addPowerUp(powerUp: PowerUp): void {
+    this._sendEventToClients(POWER_UP_ADDED, powerUp.transferData);
+  }
+
+  powerUpRemoved?: (powerUpId: string) => void;
+
+  removePowerUp(powerUpId: string): void {
+    this._sendEventToClients(POWER_UP_REMOVED, powerUpId);
   }
 
   private _hostReady(): void {
@@ -161,9 +164,16 @@ export class Communication {
         this.startGame();
         return;
       }
-      if (evtData.type === SHARE_GAME_STATE && this.clientGameStateUpdate) {
-        console.log('share game state message');
-        this.clientGameStateUpdate(evtData.data);
+      if (evtData.type === SHARE_GAME_STATE && this.clientPlayersUpdate) {
+        this.clientPlayersUpdate(evtData.data);
+        return;
+      }
+      if (evtData.type === POWER_UP_ADDED && this.powerUpAdded) {
+        this.powerUpAdded(evtData.data);
+        return;
+      }
+      if (evtData.type === POWER_UP_REMOVED && this.powerUpRemoved) {
+        this.powerUpRemoved(evtData.data);
         return;
       }
     });

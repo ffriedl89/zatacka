@@ -1,11 +1,11 @@
 import { clearCanvas } from './helpers/canvas';
-import { GameState, resetGameState } from './game-state';
+import { resetGameState } from './game-state';
 import { detectPlayersCrashing, detectPowerUpPickup } from './collision';
-import { PowerUp, PowerUpKind } from './powerups';
+import { PowerUp, PowerUpKind, PowerUpTransferData } from './powerups';
 import { getRandomNumberBetween, getRandomPowerUpPosition } from './helpers/randomize';
 import { DRAW_DEBUG_INFO, POWERUP_TIME_MAX, POWERUP_TIME_MIN } from './game-settings';
-import { Communication, TransferGameState } from '../comms/communication';
-import { Player } from './player';
+import { Communication } from '../comms/communication';
+import { Player, PlayerTransferData } from './player';
 
 export type GameControls = {
   startGame: () => void;
@@ -36,16 +36,8 @@ export function initGame(ctx: CanvasRenderingContext2D, width: number, height: n
     communication.syncStart();
 
     if (!communication.host) {
-      communication.clientGameStateUpdate = (transferGameState: TransferGameState): void => {
-        console.log('update');
-        const powerUps = transferGameState.powerUpState.powerUps.map((powerUp, index) => {
-          const p =
-            gameState.powerUpState.powerUps[index] ||
-            new PowerUp(ctx, powerUp.kind, { x: powerUp.boundingBox.x, y: powerUp.boundingBox.y });
-          p.transferData = powerUp;
-          return p;
-        });
-        const players = transferGameState.players.reduce<Record<string, Player>>((allPlayers, player) => {
+      communication.clientPlayersUpdate = (transferPlayers: PlayerTransferData[]): void => {
+        const players = transferPlayers.reduce<Record<string, Player>>((allPlayers, player) => {
           const p =
             gameState.players[player.color] || new Player({ color: player.color, startPosition: player.position, ctx });
           p.transferData = player;
@@ -55,13 +47,21 @@ export function initGame(ctx: CanvasRenderingContext2D, width: number, height: n
         gameState = {
           ...gameState,
           ...{
-            powerUpState: {
-              powerUps,
-              nextPowerUpTimestamp: transferGameState.powerUpState.nextPowerUpTimestamp
-            },
             players
           }
         };
+      };
+      communication.powerUpAdded = (transferPowerUp: PowerUpTransferData): void => {
+        const addedPowerUp = new PowerUp(ctx, transferPowerUp.kind, {
+          x: transferPowerUp.boundingBox.x,
+          y: transferPowerUp.boundingBox.y
+        });
+        addedPowerUp.transferData = transferPowerUp;
+        gameState.powerUpState.powerUps.push(addedPowerUp);
+      };
+      communication.powerUpRemoved = (powerUpId: string): void => {
+        const index = gameState.powerUpState.powerUps.findIndex(p => p.id === powerUpId);
+        gameState.powerUpState.powerUps.splice(index, 1);
       };
     }
   }
@@ -128,6 +128,10 @@ export function initGame(ctx: CanvasRenderingContext2D, width: number, height: n
       const powerUp = new PowerUp(ctx, powerUpKind, { ...getRandomPowerUpPosition(width, height) });
       powerUpState.nextPowerUpTimestamp = getRandomNumberBetween(POWERUP_TIME_MIN, POWERUP_TIME_MAX) + timestamp;
       powerUpState.powerUps.push(powerUp);
+
+      if (communication && communication.host) {
+        communication.addPowerUp(powerUp);
+      }
     }
   }
 

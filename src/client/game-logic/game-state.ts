@@ -11,7 +11,7 @@ export interface GameState {
   timeDelta: number;
   players: Record<string, Player>;
   powerUpState: PowerUpState;
-  keysPressed: KeysPressedState;
+  keysPressed: Record<string, KeysPressedState>;
 }
 
 /** Temporary generation function */
@@ -29,17 +29,21 @@ function generatePlayers(width: number, height: number, ctx: CanvasRenderingCont
 }
 
 export function resetGameState(width: number, height: number, ctx: CanvasRenderingContext2D): GameState {
+  const players = generatePlayers(width, height, ctx);
   return {
     running: false,
     timeDelta: 0,
-    players: generatePlayers(width, height, ctx),
+    players,
     powerUpState: {
       nextPowerUpTimestamp: getRandomNumberBetween(POWERUP_TIME_MIN, POWERUP_TIME_MAX) + new Date().getTime(),
       powerUps: []
     },
-    keysPressed: {
-      ArrowLeft: false,
-      ArrowRight: false
-    }
+    keysPressed: Object.keys(players).reduce<Record<string, KeysPressedState>>((keysPressed, p) => {
+      keysPressed[p] = {
+        ArrowLeft: false,
+        ArrowRight: false
+      };
+      return keysPressed;
+    }, {})
   };
 }

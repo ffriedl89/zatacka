@@ -1,5 +1,5 @@
 import { clearCanvas } from './helpers/canvas';
-import { resetGameState } from './game-state';
+import { KeysPressedState, resetGameState } from './game-state';
 import { detectPlayersCrashing, detectPowerUpPickup } from './collision';
 import { PowerUp, PowerUpKind, PowerUpTransferData } from './powerups';
 import { getRandomNumberBetween, getRandomPowerUpPosition } from './helpers/randomize';
@@ -35,6 +35,16 @@ export function initGame(ctx: CanvasRenderingContext2D, width: number, height: n
     gameState.running = false;
     communication.syncStart();
 
+    if (communication.host) {
+      const playerList = Object.keys(gameState.players);
+      communication.playerToConnectionMap.set(playerList[0], communication._peer.id);
+
+      // Connect client players to communication connections
+      for (let i = 1; i < playerList.length; i += 1) {
+        communication.playerToConnectionMap.set(playerList[i], communication._connections[i - 1].peer);
+      }
+    }
+
     if (!communication.host) {
       communication.clientPlayersUpdate = (transferPlayers: PlayerTransferData[]): void => {
         const players = transferPlayers.reduce<Record<string, Player>>((allPlayers, player) => {
@@ -68,47 +78,128 @@ export function initGame(ctx: CanvasRenderingContext2D, width: number, height: n
 
   function setupEventListeners(): void {
     window.addEventListener('keydown', (e: KeyboardEvent) => {
-      if (!communication || (communication && communication.host)) {
+      // This is a bit odd and can certainly be improved
+      // it's simply to keep single player testing working as well
+
+      // Deal with No Communication state
+      if (!communication) {
         if (e.key === 'ArrowRight') {
+          const keysPressed = Object.entries(gameState.keysPressed).reduce<Record<string, KeysPressedState>>(
+            (keys, [playerId, playerKeys]) => {
+              keys[playerId] = {
+                ...playerKeys,
+                ArrowRight: true
+              };
+              return keys;
+            },
+            {}
+          );
+
           gameState = {
             ...gameState,
-            keysPressed: {
-              ...gameState.keysPressed,
-              ArrowRight: true
-            }
+            keysPressed
           };
         } else if (e.key === 'ArrowLeft') {
+          const keysPressed = Object.entries(gameState.keysPressed).reduce<Record<string, KeysPressedState>>(
+            (keys, [playerId, playerKeys]) => {
+              keys[playerId] = {
+                ...playerKeys,
+                ArrowLeft: true
+              };
+              return keys;
+            },
+            {}
+          );
+
           gameState = {
             ...gameState,
-            keysPressed: {
-              ...gameState.keysPressed,
-              ArrowLeft: true
-            }
+            keysPressed
           };
         }
       }
+
+      // if (!communication || (communication && communication.host)) {
+      //   if (e.key === 'ArrowRight') {
+      //     gameState = {
+      //       ...gameState,
+      //       keysPressed: {
+      //         ...gameState.keysPressed
+      //         ArrowRight: true
+      //       }
+      //     };
+      //   } else if (e.key === 'ArrowLeft') {
+      //     gameState = {
+      //       ...gameState,
+      //       keysPressed: {
+      //         ...gameState.keysPressed
+      //         ArrowLeft: true
+      //       }
+      //     };
+      //   }
+      // }
     });
 
     window.addEventListener('keyup', (e: KeyboardEvent) => {
-      if (!communication || (communication && communication.host)) {
+      // This is a bit odd and can certainly be improved
+      // it's simply to keep single player testing working as well
+
+      // Deal with No Communication state
+      // Deal with No Communication state
+      if (!communication) {
         if (e.key === 'ArrowRight') {
+          const keysPressed = Object.entries(gameState.keysPressed).reduce<Record<string, KeysPressedState>>(
+            (keys, [playerId, playerKeys]) => {
+              keys[playerId] = {
+                ...playerKeys,
+                ArrowRight: false
+              };
+              return keys;
+            },
+            {}
+          );
+
           gameState = {
             ...gameState,
-            keysPressed: {
-              ...gameState.keysPressed,
-              ArrowRight: false
-            }
+            keysPressed
           };
         } else if (e.key === 'ArrowLeft') {
+          const keysPressed = Object.entries(gameState.keysPressed).reduce<Record<string, KeysPressedState>>(
+            (keys, [playerId, playerKeys]) => {
+              keys[playerId] = {
+                ...playerKeys,
+                ArrowLeft: false
+              };
+              return keys;
+            },
+            {}
+          );
+
           gameState = {
             ...gameState,
-            keysPressed: {
-              ...gameState.keysPressed,
-              ArrowLeft: false
-            }
+            keysPressed
           };
         }
       }
+
+      // if (!communication || (communication && communication.host)) {
+      //   if (e.key === 'ArrowRight') {
+      //     gameState = {
+      //       ...gameState,
+      //       keysPressed: {
+      //         ...gameState.keysPressed
+      //         ArrowRight: false
+      //       }
+      //     };
+      //   } else if (e.key === 'ArrowLeft') {
+      //     gameState = {
+      //       ...gameState,
+      //       keysPressed: {
+      //         ...gameState.keysPressed
+      //         ArrowLeft: false
+      //       }
+      //     };
+      //   }
+      // }
     });
   }
 

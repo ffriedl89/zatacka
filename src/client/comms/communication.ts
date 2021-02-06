@@ -16,7 +16,7 @@ import {
 
 export class Communication {
   /** Global peer connection */
-  private _peer: Peer;
+  _peer: Peer;
 
   // Setters and connections to the lobbyID
   lobbyId = '';
@@ -32,7 +32,7 @@ export class Communication {
     }
     // If we are on a client, send the update to the host
     if (!this.host) {
-      this.connections[0].send({ type: SET_USER_NAME, data: username });
+      this._connections[0].send({ type: SET_USER_NAME, data: username });
     } else {
       this.userName = username;
       this._updateMembersList();
@@ -53,11 +53,13 @@ export class Communication {
   startGame?: () => void;
   syncStart(): void {
     if (!this.host) {
-      this.connections[0].send({ type: CLIENT_GAME_STAGED });
+      this._connections[0].send({ type: CLIENT_GAME_STAGED });
     }
   }
 
-  private connections: Peer.DataConnection[] = [];
+  playerToConnectionMap = new Map<string, string>();
+
+  _connections: Peer.DataConnection[] = [];
 
   /**
    * Metadata map connecting a DataConnection to a user
@@ -83,11 +85,11 @@ export class Communication {
   joinLobby(lobbyId: string): void {
     this.lobbyId = lobbyId;
     this._peer.on('open', id => {
-      this.connections = [this._peer.connect(this.lobbyId, { reliable: false })];
-      this.connections[0].on('open', () => {
+      this._connections = [this._peer.connect(this.lobbyId, { reliable: false })];
+      this._connections[0].on('open', () => {
         this._clientReady();
       });
-      this.connections[0].on('error', err => {
+      this._connections[0].on('error', err => {
         console.log('Client error', err);
       });
     });
@@ -144,13 +146,13 @@ export class Communication {
           return;
         }
       });
-      this.connections.push(dataConnection);
+      this._connections.push(dataConnection);
       this._metaMap.set(dataConnection.peer, {});
     });
   }
 
   private _clientReady(): void {
-    const connection = this.connections[0];
+    const connection = this._connections[0];
     connection.on('data', evtData => {
       if (evtData.type === SET_USER_LIST && this.setLobbyUsers) {
         this.setLobbyUsers(evtData.data);
@@ -211,7 +213,7 @@ export class Communication {
   }
 
   private _sendEventToClients(event: string, eventData: unknown): void {
-    for (const connection of this.connections) {
+    for (const connection of this._connections) {
       connection.send({ type: event, data: eventData });
     }
   }

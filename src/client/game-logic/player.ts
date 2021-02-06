@@ -162,10 +162,13 @@ export class Player {
       return;
     }
 
+    // Get the players own key state
+    const playersKeysPressed = keysPressed[this.id];
+
     const rotationDelta = timeDelta * ROTATION_SPEED;
-    if (keysPressed.ArrowLeft) {
+    if (playersKeysPressed.ArrowLeft) {
       this.angle -= rotationDelta;
-    } else if (keysPressed.ArrowRight) {
+    } else if (playersKeysPressed.ArrowRight) {
       this.angle += rotationDelta;
     }
     const rotation = degreeToRad(this.angle);

@@ -11,7 +11,8 @@ import {
   START_GAME,
   SHARE_GAME_STATE,
   POWER_UP_ADDED,
-  POWER_UP_REMOVED
+  POWER_UP_REMOVED,
+  CLIENT_KEY_EVENT
 } from './comm-signs';
 
 export class Communication {
@@ -57,7 +58,13 @@ export class Communication {
     }
   }
 
+  sendKeyEvent(keyEvent: 'keyUp' | 'keyDown', key: string): void {
+    console.log('Send key event', keyEvent, key);
+    this._connections[0].send({ type: CLIENT_KEY_EVENT, data: { keyEvent, key } });
+  }
+
   playerToConnectionMap = new Map<string, string>();
+  connectionToPlayerMap = new Map<string, string>();
 
   _connections: Peer.DataConnection[] = [];
 
@@ -103,6 +110,9 @@ export class Communication {
   // state
   clientPlayersUpdate?: (players: PlayerTransferData[]) => void;
 
+  // Function called on the host when a client key event comes in
+  onClientKeyEvent?: (data: { keyEvent: 'keyUp' | 'keyDown'; key: string; playerId: string }) => void;
+
   syncGameState(gameState: GameState): void {
     const transferablePlayers: PlayerTransferData[] = Object.values(gameState.players).map(
       player => player.transferData
@@ -126,7 +136,6 @@ export class Communication {
   private _hostReady(): void {
     this._peer.on('connection', dataConnection => {
       dataConnection.on('data', evtData => {
-        console.log('Recieved data from client', evtData);
         if (evtData.type === SET_USER_NAME) {
           const meta = this._metaMap.get(dataConnection.peer);
           if (meta) {
@@ -143,6 +152,13 @@ export class Communication {
             this._metaMap.set(dataConnection.peer, meta);
             this._checkForGameStart();
           }
+          return;
+        }
+        if (evtData.type === CLIENT_KEY_EVENT && this.onClientKeyEvent) {
+          this.onClientKeyEvent({
+            ...evtData.data,
+            playerId: this.connectionToPlayerMap.get(dataConnection.peer)
+          });
           return;
         }
       });

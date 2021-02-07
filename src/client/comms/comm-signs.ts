@@ -7,3 +7,4 @@ export const SHARE_GAME_STATE = '[SHARE GAME STATE]';
 export const RECEIVE_GAME_STATE = '[RECEIVE GAME STATE]';
 export const POWER_UP_ADDED = '[POWER UP ADDED]';
 export const POWER_UP_REMOVED = '[POWER UP REMOVED]';
+export const CLIENT_KEY_EVENT = '[CLIENT KEY EVENT]';

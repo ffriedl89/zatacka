@@ -38,11 +38,28 @@ export function initGame(ctx: CanvasRenderingContext2D, width: number, height: n
     if (communication.host) {
       const playerList = Object.keys(gameState.players);
       communication.playerToConnectionMap.set(playerList[0], communication._peer.id);
+      communication.connectionToPlayerMap.set(communication._peer.id, playerList[0]);
 
       // Connect client players to communication connections
       for (let i = 1; i < playerList.length; i += 1) {
         communication.playerToConnectionMap.set(playerList[i], communication._connections[i - 1].peer);
+        communication.connectionToPlayerMap.set(communication._connections[i - 1].peer, playerList[i]);
       }
+
+      communication.onClientKeyEvent = ({ keyEvent, key, playerId }): void => {
+        const isKeyDown = keyEvent === 'keyDown';
+        if (playerId && key === 'ArrowLeft') {
+          gameState.keysPressed[playerId] = {
+            ...gameState.keysPressed[playerId],
+            ArrowLeft: isKeyDown
+          };
+        } else if (playerId && key === 'ArrowRight') {
+          gameState.keysPressed[playerId] = {
+            ...gameState.keysPressed[playerId],
+            ArrowRight: isKeyDown
+          };
+        }
+      };
     }
 
     if (!communication.host) {
@@ -116,27 +133,27 @@ export function initGame(ctx: CanvasRenderingContext2D, width: number, height: n
             keysPressed
           };
         }
+      } else {
+        // If multiplayer is enabled, make a difference between host and client
+        if (communication.host) {
+          const playerKey = communication.connectionToPlayerMap.get(communication._peer.id);
+          if (playerKey && e.key === 'ArrowLeft') {
+            gameState.keysPressed[playerKey] = {
+              ...gameState.keysPressed[playerKey],
+              ArrowLeft: true
+            };
+          } else if (playerKey && e.key === 'ArrowRight') {
+            gameState.keysPressed[playerKey] = {
+              ...gameState.keysPressed[playerKey],
+              ArrowRight: true
+            };
+          }
+        } else {
+          if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+            communication.sendKeyEvent('keyDown', e.key);
+          }
+        }
       }
-
-      // if (!communication || (communication && communication.host)) {
-      //   if (e.key === 'ArrowRight') {
-      //     gameState = {
-      //       ...gameState,
-      //       keysPressed: {
-      //         ...gameState.keysPressed
-      //         ArrowRight: true
-      //       }
-      //     };
-      //   } else if (e.key === 'ArrowLeft') {
-      //     gameState = {
-      //       ...gameState,
-      //       keysPressed: {
-      //         ...gameState.keysPressed
-      //         ArrowLeft: true
-      //       }
-      //     };
-      //   }
-      // }
     });
 
     window.addEventListener('keyup', (e: KeyboardEvent) => {
@@ -179,27 +196,27 @@ export function initGame(ctx: CanvasRenderingContext2D, width: number, height: n
             keysPressed
           };
         }
+      } else {
+        // If multiplayer is enabled, make a difference between host and client
+        if (communication.host) {
+          const playerKey = communication.connectionToPlayerMap.get(communication._peer.id);
+          if (playerKey && e.key === 'ArrowLeft') {
+            gameState.keysPressed[playerKey] = {
+              ...gameState.keysPressed[playerKey],
+              ArrowLeft: false
+            };
+          } else if (playerKey && e.key === 'ArrowRight') {
+            gameState.keysPressed[playerKey] = {
+              ...gameState.keysPressed[playerKey],
+              ArrowRight: false
+            };
+          }
+        } else {
+          if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+            communication.sendKeyEvent('keyUp', e.key);
+          }
+        }
       }
-
-      // if (!communication || (communication && communication.host)) {
-      //   if (e.key === 'ArrowRight') {
-      //     gameState = {
-      //       ...gameState,
-      //       keysPressed: {
-      //         ...gameState.keysPressed
-      //         ArrowRight: false
-      //       }
-      //     };
-      //   } else if (e.key === 'ArrowLeft') {
-      //     gameState = {
-      //       ...gameState,
-      //       keysPressed: {
-      //         ...gameState.keysPressed
-      //         ArrowLeft: false
-      //       }
-      //     };
-      //   }
-      // }
     });
   }
 
